@@ -22,8 +22,10 @@ impl Plugin for VoxelTerrainPlugin {
         app.insert_resource(ChunkManager::default());
         app.insert_resource(ChunkSpawnLimiter::default());
         app.add_systems(
-            FixedUpdate,
+            Update,
             (
+                adjust_limiter,
+                add_desired_chunks,
                 spawn_with_limits,
                 make_chunks_dormant,
                 make_dormant_chunks_active,

@@ -130,11 +130,11 @@ pub fn spawn_with_limits(
     }
 }
 
-pub fn _add_desired_chunks(
+pub fn add_desired_chunks(
     mut manager: ResMut<ChunkManager>,
     query: Query<(&AreaManaged, &GlobalTransform), (With<Observer>, Changed<GlobalTransform>)>,
 ) {
-    //manager.desired_chunks.clear();
+    manager.desired_chunks.clear();
 
     for (area, transform) in query {
         let transform_offset = transform.translation().xz().as_ivec2() / IVec2::splat(CHUNK_SIZE);
@@ -244,7 +244,7 @@ pub fn make_dormant_chunks_active(mut commands: Commands, manager: Res<ChunkMana
     }
 }
 
-fn adjust_limiter(time: Res<Time>, mut limiter: ResMut<ChunkSpawnLimiter>) {
+pub fn adjust_limiter(time: Res<Time>, mut limiter: ResMut<ChunkSpawnLimiter>) {
     let delta = time.delta_secs();
     limiter.smooth_frame_time = limiter.smooth_frame_time * 0.95 + delta * 0.05;
 

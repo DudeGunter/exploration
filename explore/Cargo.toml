@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { workspace = true }
+bevy = { workspace = true, features = ["bevy_remote"] }
 bevy_flycam = "0.17"
 bevy-inspector-egui = "0.35"
 avian3d = { workspace = true }

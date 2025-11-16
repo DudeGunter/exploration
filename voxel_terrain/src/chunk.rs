@@ -11,7 +11,8 @@ use bevy::{
 };
 use noiz::prelude::*;
 
-pub const CHUNK_SIZE: i32 = 32;
+pub const CHUNK_SIZE: i32 = 64;
+// DONT CHANGE THIS!!!! it dont work
 pub const VOXEL_SIZE: Vector = Vector::splat(1.0);
 
 #[derive(Component, Reflect, Debug, Clone, Copy, Deref, DerefMut, Hash, Eq, PartialEq)]
@@ -42,8 +43,12 @@ pub fn spawn_generator_task(
                 // Offset by chunk location
                 let x = (i as Scalar) + (chunk.x * CHUNK_SIZE) as f32;
                 let z = (j as Scalar) + (chunk.y * CHUNK_SIZE) as f32;
-                let y = noise.sample_for::<f32>(Vec2::new(x, z) * 0.05) * 10.0;
+                let y = noise.sample_for::<f32>(Vec2::new(x, z) * 0.005) * 40.0;
                 let point = Vector::new(i as Scalar, y, j as Scalar); // Local coords
+                //for depth in 0..100 {
+                //    let point = point + Vector::new(0.0, -depth as Scalar, 0.0);
+                //    points.push(point);
+                //}
                 points.push(VOXEL_SIZE * point);
             }
         }

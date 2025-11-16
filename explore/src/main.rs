@@ -1,6 +1,13 @@
 use avian3d::prelude::*;
 use bevy::{
-    camera::Exposure, core_pipeline::tonemapping::Tonemapping, pbr::Atmosphere, prelude::*,
+    camera::Exposure,
+    core_pipeline::tonemapping::Tonemapping,
+    pbr::Atmosphere,
+    prelude::*,
+    remote::{
+        RemotePlugin,
+        http::{Headers, RemoteHttpPlugin},
+    },
 };
 use bevy_flycam::prelude::*;
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
@@ -9,6 +16,15 @@ use voxel_terrain::prelude::*;
 
 fn main() -> AppExit {
     let mut app = App::new();
+
+    let cors_headers = Headers::new()
+        .insert("Access-Control-Allow-Origin", "https://doup.github.io")
+        .insert("Access-Control-Allow-Headers", "Content-Type");
+
+    app.add_plugins((
+        RemotePlugin::default(),
+        RemoteHttpPlugin::default().with_headers(cors_headers),
+    ));
 
     app.add_plugins((
         DefaultPlugins,
@@ -28,7 +44,7 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         FlyCam,
         Observer,
-        AreaManaged::Circle(100.0),
+        AreaManaged::Circle(25.0),
         Camera3d::default(),
         Atmosphere::EARTH,
         AmbientLight {
