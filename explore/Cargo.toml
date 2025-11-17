@@ -12,6 +12,7 @@ noiz = "0.3"
 log = { workspace = true }
 tracing = { workspace = true }
 voxel_terrain = { workspace = true }
+networking = { workspace = true, features = ["udp"] }
 
 
 # Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.

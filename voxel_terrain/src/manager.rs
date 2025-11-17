@@ -13,7 +13,6 @@ use bevy::{
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future},
 };
-use std::f32::consts::PI;
 
 /// Attach this to the entity where the terrain should be loaded.
 #[derive(Component, Reflect, Debug)]

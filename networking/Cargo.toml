@@ -3,10 +3,17 @@ name = "networking"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+udp = []
+steam = []
+
 [dependencies]
-bevy = { workspace = true }
+bevy.workspace = true
+lightyear = { workspace = true }
+serde = { workspace = true }
 log = { workspace = true }
 tracing = { workspace = true }
+async-compat = "0.2.3"
 
 # Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.
 # In some cases they may still signal poor code quality however, so consider commenting out these lines.

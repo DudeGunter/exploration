@@ -9,7 +9,24 @@ resolver = "3"
 [workspace.dependencies]
 bevy = "0.17"
 avian3d = "0.4"
+leafwing-input-manager = "0.19"
+lightyear = {version = "0.25",features = [
+    "server",
+    "client",
+    "interpolation",
+    "prediction",
+    "replication",
+    "webtransport",
+    "webtransport_self_signed",
+    "webtransport_dangerous_configuration",
+    "websocket",
+    "websocket_self_signed",
+    "udp",
+    "netcode"
+] }
+serde = "1.0"
 voxel_terrain = { path = "voxel_terrain" }
+networking = { path = "networking" }
 log = { version = "0.4", features = [
     "max_level_debug",
     "release_max_level_warn",
