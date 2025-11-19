@@ -18,6 +18,7 @@ impl Plugin for NetworkingPlugin {
             ServerPlugins { tick_duration },
         ));
         app.add_observer(client::handle_connecting_client);
+        app.add_observer(host::handle_spawning_host);
     }
 }
 

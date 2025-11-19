@@ -1,13 +1,6 @@
 use avian3d::prelude::*;
 use bevy::{
-    camera::Exposure,
-    core_pipeline::tonemapping::Tonemapping,
-    pbr::Atmosphere,
-    prelude::*,
-    remote::{
-        RemotePlugin,
-        http::{Headers, RemoteHttpPlugin},
-    },
+    camera::Exposure, core_pipeline::tonemapping::Tonemapping, pbr::Atmosphere, prelude::*,
 };
 use bevy_flycam::prelude::*;
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
