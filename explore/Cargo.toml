@@ -4,14 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { workspace = true, features = ["bevy_remote"] }
+bevy.workspace = true
+bevy_hui.workspace = true
 bevy_flycam = "0.17"
 bevy-inspector-egui = "0.35"
-avian3d = { workspace = true }
+avian3d.workspace = true
 noiz = "0.3"
-log = { workspace = true }
-tracing = { workspace = true }
-voxel_terrain = { workspace = true }
+log.workspace = true
+tracing.workspace = true
+voxel_terrain.workspace = true
 networking = { workspace = true, features = ["udp"] }
 
 

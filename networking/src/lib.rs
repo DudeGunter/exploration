@@ -23,5 +23,7 @@ impl Plugin for NetworkingPlugin {
 }
 
 pub mod prelude {
-    pub use crate::client::ConnectClient;
+    pub use crate::NetworkingPlugin;
+    pub use crate::client::{ConnectClient, LocalClient};
+    pub use crate::host::Host;
 }

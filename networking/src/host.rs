@@ -32,10 +32,7 @@ impl Default for Host {
         Self {
             transport: ServerTransports::WebTransport {
                 local_port: SERVER_PORT,
-                certificate: WebTransportCertificateSettings::FromFile {
-                    cert: "../../certificates/cert.pem".to_string(),
-                    key: "../../certificates/key.pem".to_string(),
-                },
+                certificate: WebTransportCertificateSettings::default(),
             },
             shared: SHARED_SETTINGS,
         }
@@ -108,6 +105,7 @@ pub(crate) fn handle_spawning_host(trigger: On<Host>, mut cmds: Commands) {
     }
 
     cmds.spawn((
+        crate::client::LocalClient,
         Client::default(),
         LinkOf { server },
         Name::new("Host Client"),

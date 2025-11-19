@@ -36,17 +36,23 @@ impl Default for ConnectClient {
             client_id: client_id,
             client_port: CLIENT_PORT,
             server_addr: SERVER_ADDR,
-            transport: ClientTransports::WebTransport,
+            transport: ClientTransports::Udp,
             shared: SHARED_SETTINGS,
         }
     }
 }
+
+/// Marker component for the client related to self
+/// This should NEVER be replicated in any manner, would ruin everything
+#[derive(Component, Reflect, Debug, Default)]
+pub struct LocalClient;
 
 pub(crate) fn handle_connecting_client(trigger: On<ConnectClient>, mut cmds: Commands) {
     let settings = trigger.event();
     let client_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), settings.client_port);
     let client = cmds
         .spawn((
+            LocalClient,
             Client::default(),
             Link::new(None),
             LocalAddr(client_addr),

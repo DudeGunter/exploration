@@ -4,6 +4,7 @@ use bevy::{
 };
 use bevy_flycam::prelude::*;
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
+use networking::prelude::*;
 use voxel_terrain::prelude::*;
 // Everything and anything in bevy diddy blud
 
@@ -18,12 +19,14 @@ fn main() -> AppExit {
         EguiPlugin::default(),
         WorldInspectorPlugin::new(),
         VoxelTerrainPlugin,
+        NetworkingPlugin,
     ));
     app.add_systems(Startup, setup);
     app.run()
 }
 
 fn setup(mut commands: Commands) {
+    commands.trigger(Host::default());
     commands.spawn(Terrain);
     commands.spawn((
         FlyCam,
