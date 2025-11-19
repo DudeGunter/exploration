@@ -19,88 +19,99 @@ use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
-pub fn spawn_host() -> impl Bundle {}
 
-pub fn spawn_host_client() -> impl Bundle {
-    (Client::default(), Name::new("HostClient"))
-}
-
-#[derive(Component, Debug)]
-#[component(on_add = Self::on_add)]
-pub struct Server {
+#[derive(Event)]
+pub struct Host {
     pub transport: ServerTransports,
     pub shared: SharedSettings,
 }
 
-impl Server {
-    fn on_add(mut world: DeferredWorld, context: HookContext) {
-        let entity = context.entity;
-        world.commands().queue(move |world: &mut World| -> Result {
-            let mut entity_mut = world.entity_mut(entity);
-            let settings = entity_mut.take::<Server>().unwrap();
-            entity_mut.insert((Name::from("Server"),));
-
-            let add_netcode = |entity_mut: &mut EntityWorldMut| {
-                // Use private key from environment variable, if set. Otherwise from settings file.
-                let private_key = if let Some(key) = parse_private_key_from_env() {
-                    info!("Using private key from LIGHTYEAR_PRIVATE_KEY env var");
-                    key
-                } else {
-                    settings.shared.private_key
-                };
-                entity_mut.insert(NetcodeServer::new(NetcodeConfig {
-                    protocol_id: settings.shared.protocol_id,
-                    private_key,
-                    ..Default::default()
-                }));
-            };
-            match settings.transport {
-                #[cfg(feature = "udp")]
-                ServerTransports::Udp { local_port } => {
-                    add_netcode(&mut entity_mut);
-                    let server_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), local_port);
-                    entity_mut.insert((LocalAddr(server_addr), ServerUdpIo::default()));
-                }
-                ServerTransports::WebTransport {
-                    local_port,
-                    certificate,
-                } => {
-                    add_netcode(&mut entity_mut);
-                    let server_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), local_port);
-                    entity_mut.insert((
-                        LocalAddr(server_addr),
-                        WebTransportServerIo {
-                            certificate: (&certificate).into(),
-                        },
-                    ));
-                }
-                ServerTransports::WebSocket { local_port } => {
-                    add_netcode(&mut entity_mut);
-                    let server_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), local_port);
-                    let sans = vec![
-                        "localhost".to_string(),
-                        "127.0.0.1".to_string(),
-                        "::1".to_string(),
-                    ];
-                    let config = ServerConfig::builder()
-                        .with_bind_address(server_addr)
-                        .with_identity(
-                            lightyear::websocket::server::Identity::self_signed(sans).unwrap(),
-                        );
-                    entity_mut.insert((LocalAddr(server_addr), WebSocketServerIo { config }));
-                }
-                #[cfg(feature = "steam")]
-                ServerTransports::Steam { local_port } => {
-                    let server_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), local_port);
-                    entity_mut.insert(SteamServerIo {
-                        target: ListenTarget::Addr(server_addr),
-                        config: SessionConfig::default(),
-                    });
-                }
-            };
-            Ok(())
-        });
+impl Default for Host {
+    fn default() -> Self {
+        use crate::shared::*;
+        Self {
+            transport: ServerTransports::WebTransport {
+                local_port: SERVER_PORT,
+                certificate: WebTransportCertificateSettings::FromFile {
+                    cert: "../../certificates/cert.pem".to_string(),
+                    key: "../../certificates/key.pem".to_string(),
+                },
+            },
+            shared: SHARED_SETTINGS,
+        }
     }
+}
+
+/// This spawns both the host server and the host client
+pub(crate) fn handle_spawning_host(trigger: On<Host>, mut cmds: Commands) {
+    let server = cmds.spawn(Name::new("Host Server")).id();
+    let settings = trigger.event();
+
+    let mut add_netcode = || {
+        let private_key = if let Some(key) = parse_private_key_from_env() {
+            info!("Using private key from LIGHTYEAR_PRIVATE_KEY env var");
+            key
+        } else {
+            settings.shared.private_key
+        };
+        cmds.entity(server)
+            .insert(NetcodeServer::new(NetcodeConfig {
+                protocol_id: settings.shared.protocol_id,
+                private_key,
+                ..default()
+            }));
+    };
+
+    match settings.transport.clone() {
+        #[cfg(feature = "udp")]
+        ServerTransports::Udp { local_port } => {
+            add_netcode();
+            let server_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), local_port);
+            cmds.entity(server)
+                .insert((LocalAddr(server_addr), ServerUdpIo::default()));
+        }
+        ServerTransports::WebTransport {
+            local_port,
+            certificate,
+        } => {
+            add_netcode();
+            let server_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), local_port);
+            cmds.entity(server).insert((
+                LocalAddr(server_addr),
+                WebTransportServerIo {
+                    certificate: (&certificate).into(),
+                },
+            ));
+        }
+        ServerTransports::WebSocket { local_port } => {
+            add_netcode();
+            let server_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), local_port);
+            let sans = vec![
+                "localhost".to_string(),
+                "127.0.0.1".to_string(),
+                "::1".to_string(),
+            ];
+            let config = ServerConfig::builder()
+                .with_bind_address(server_addr)
+                .with_identity(lightyear::websocket::server::Identity::self_signed(sans).unwrap());
+            cmds.entity(server)
+                .insert((LocalAddr(server_addr), WebSocketServerIo { config }));
+        }
+        #[cfg(feature = "steam")]
+        ServerTransports::Steam { local_port } => {
+            let server_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), local_port);
+            entity_mut.insert(SteamServerIo {
+                target: ListenTarget::Addr(server_addr),
+                config: SessionConfig::default(),
+            });
+        }
+    }
+
+    cmds.spawn((
+        Client::default(),
+        LinkOf { server },
+        Name::new("Host Client"),
+    ));
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

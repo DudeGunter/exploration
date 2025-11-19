@@ -5148,6 +5148,7 @@ dependencies = [
  "bevy",
  "lightyear",
  "log",
+ "rand",
  "serde",
  "tracing",
 ]

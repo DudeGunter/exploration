@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use lightyear::prelude::{client::ClientPlugins, server::ServerPlugins, *};
+use lightyear::prelude::{client::ClientPlugins, server::ServerPlugins};
 use std::time::Duration;
 
 pub mod client;
@@ -17,5 +17,10 @@ impl Plugin for NetworkingPlugin {
             ClientPlugins { tick_duration },
             ServerPlugins { tick_duration },
         ));
+        app.add_observer(client::handle_connecting_client);
     }
+}
+
+pub mod prelude {
+    pub use crate::client::ConnectClient;
 }

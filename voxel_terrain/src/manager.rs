@@ -57,6 +57,7 @@ impl ChunkManager {
         self.chunk_entities.remove(pos);
     }
 
+    #[allow(dead_code)]
     pub fn iter_desired_chunks(&self) -> Vec<Chunk> {
         self.desired_chunks.iter().copied().collect()
     }
