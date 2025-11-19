@@ -9,7 +9,7 @@ resolver = "3"
 [workspace.dependencies]
 bevy = "0.17"
 avian3d = "0.4"
-bevy_hui = { git = "https://github.com/Lommix/bevy_hui.git", branch = "master" }
+bevy_hui = "0.5"
 leafwing-input-manager = "0.19"
 lightyear = {version = "0.25",features = [
     "server",

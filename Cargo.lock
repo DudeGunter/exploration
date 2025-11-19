@@ -1175,7 +1175,8 @@ dependencies = [
 [[package]]
 name = "bevy_hui"
 version = "0.5.0"
-source = "git+https://github.com/Lommix/bevy_hui.git?branch=master#473cafaff3a4677bd1c53b8dc7f7744e402f2c52"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6abec1e7978617ad43819f969daab595d39fade24ccbdbba6ae1188b6a73fe7"
 dependencies = [
  "bevy",
  "nom",
