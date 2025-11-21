@@ -21,6 +21,7 @@ impl Plugin for VoxelTerrainPlugin {
         // These don't have to be fixed, just makes it run a lil less
         app.insert_resource(ChunkManager::default());
         app.insert_resource(ChunkSpawnLimiter::default());
+        app.add_systems(Startup, || {warn!("This plugin is currently pretty inefficient, issues with collider calculations potentially??\nEditing should be implemented")});
         app.add_systems(
             Update,
             (

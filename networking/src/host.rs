@@ -1,5 +1,6 @@
-#![allow(unused_imports)]
-#![allow(unused_variables)]
+#![allow(unused_imports)] // stop the feature gate warnings
+#![allow(unused_variables)] // ^
+#![allow(unreachable_code)] // stop the TODO warning
 
 use core::net::{Ipv4Addr, SocketAddr};
 
@@ -177,16 +178,20 @@ impl From<&WebTransportCertificateSettings> for Identity {
                     println!("🔐 SAN += SELF_SIGNED_SANS: {san}");
                     sans.extend(san.split(',').map(|s| s.to_string()));
                 }
-                println!("🔐 Generating self-signed certificate with SANs: {sans:?}");
+                //println!("🔐 Generating self-signed certificate with SANs: {sans:?}");
                 let identity = Identity::self_signed(sans).unwrap();
                 let digest = identity.certificate_chain().as_slice()[0].hash();
-                println!("🔐 Certificate digest: {digest}");
+                //println!("🔐 Certificate digest: {digest}");
                 identity
             }
             WebTransportCertificateSettings::FromFile {
                 cert: cert_pem_path,
                 key: private_key_pem_path,
             } => {
+                todo!(
+                    "This don't work in any of my tests... stolen from lightyear common cli example"
+                );
+
                 println!(
                     "Reading certificate PEM files:\n * cert: {cert_pem_path}\n * key: {private_key_pem_path}",
                 );
