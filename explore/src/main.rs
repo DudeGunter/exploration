@@ -20,6 +20,7 @@ fn main() -> AppExit {
         WorldInspectorPlugin::new(),
         VoxelTerrainPlugin,
         NetworkingPlugin,
+        console::ConsolePlugin,
     ));
     app.add_systems(Startup, setup);
     app.run()

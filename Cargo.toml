@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "character_controller",
+    "console",
     "explore",
     "networking",
     "voxel_terrain",
@@ -7,15 +9,32 @@ members = [
 resolver = "3"
 
 [workspace.dependencies]
-bevy = {version = "0.17", features = [
-"file_watcher",
-"multi_threaded",
-"bevy_remote",
-]}
-avian3d = "0.4"
 bevy_hui = "0.5"
 leafwing-input-manager = "0.19"
-lightyear = {version = "0.25", features = [
+serde = "1.0"
+console = { path = "console" }
+
+[workspace.dependencies.avian3d]
+version = "0.4"
+features = [
+    "serialize",
+    "simd",
+]
+
+[workspace.dependencies.bevy]
+version = "0.17"
+features = [
+    "file_watcher",
+    "multi_threaded",
+    "bevy_remote",
+]
+
+[workspace.dependencies.character_controller]
+path = "character_controller"
+
+[workspace.dependencies.lightyear]
+version = "0.25"
+features = [
     "server",
     "client",
     "interpolation",
@@ -27,19 +46,28 @@ lightyear = {version = "0.25", features = [
     "websocket",
     "websocket_self_signed",
     "udp",
-    "netcode"
-] }
-serde = "1.0"
-voxel_terrain = { path = "voxel_terrain" }
-networking = { path = "networking" }
-log = { version = "0.4", features = [
+    "netcode",
+]
+
+[workspace.dependencies.log]
+version = "0.4"
+features = [
     "max_level_debug",
     "release_max_level_warn",
-] }
-tracing = { version = "0.1", features = [
+]
+
+[workspace.dependencies.networking]
+path = "networking"
+
+[workspace.dependencies.tracing]
+version = "0.1"
+features = [
     "max_level_debug",
     "release_max_level_warn",
-] }
+]
+
+[workspace.dependencies.voxel_terrain]
+path = "voxel_terrain"
 
 [profile.dev]
 opt-level = 1
