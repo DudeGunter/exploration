@@ -3,7 +3,6 @@ use bevy::{
     camera::Exposure, core_pipeline::tonemapping::Tonemapping, pbr::Atmosphere, prelude::*,
 };
 use bevy_flycam::prelude::*;
-use bevy_hui::prelude::*;
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use networking::prelude::*;
 use voxel_terrain::prelude::*;
@@ -18,21 +17,20 @@ fn main() -> AppExit {
         PhysicsPickingPlugin,
         NoCameraPlayerPlugin,
         EguiPlugin::default(),
-        HuiPlugin,
         WorldInspectorPlugin::new(),
         VoxelTerrainPlugin,
         NetworkingPlugin,
     ));
-    app.add_systems(Startup, (setup, hui_setup));
+    app.add_systems(Startup, setup);
     app.run()
 }
 
 fn setup(mut commands: Commands) {
     commands.trigger(Host::default());
-    commands.spawn(Terrain);
+    //commands.spawn(Terrain);
     commands.spawn((
         FlyCam,
-        Observer,
+        //Observer,
         AreaManaged::Circle(25.0),
         Camera3d::default(),
         Atmosphere::EARTH,
@@ -58,36 +56,4 @@ fn setup(mut commands: Commands) {
         speed: 100.0,
         ..default()
     });
-}
-
-#[derive(Component)]
-#[require(Name::new("Basic Button"))]
-pub struct BasicButton;
-
-fn hui_setup(
-    mut cmds: Commands,
-    server: Res<AssetServer>,
-    mut html_comps: HtmlComponents,
-    mut html_funcs: HtmlFunctions,
-) {
-    // simple register
-    html_comps.register("basic_button", server.load("basic_button.html"));
-
-    // advanced register, with spawn functions
-    html_comps.register_with_spawn_fn(
-        "basic_button",
-        server.load("basic_button.html"),
-        |mut entity_commands| {
-            entity_commands.insert(BasicButton);
-        },
-    );
-
-    // create a system binding that will change the game state.
-    // any (one-shot) system with `In<Entity>` is valid!
-    // the entity represents the node, the function is called on
-    html_funcs.register("start_game", |In(entity): In<Entity>| {
-        info!("Go into game now");
-    });
-
-    cmds.spawn(HtmlNode(server.load("menu.html")));
 }
