@@ -123,6 +123,7 @@ fn command_line_output(text: String) -> impl Bundle {
             height: px(24),
             ..default()
         },
+        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
         Text::new(text),
     )
 }

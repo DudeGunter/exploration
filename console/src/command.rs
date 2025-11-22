@@ -13,7 +13,11 @@ pub fn handle_command(
         .event()
         .split_once(' ')
         .unwrap_or((trigger.event(), ""));
+    // You may think to use spawn_batch here, but it isn't currently possible because
+    // you can't fetch the entities post spawn_batch to add to the container
+    // and you ain't spawning jack shit
     let mut outputs: Vec<Entity> = Vec::new();
+    // Each acts as its own line in the console
     let mut out = |message: &str| {
         // lil func action
         outputs.push(
@@ -26,6 +30,7 @@ pub fn handle_command(
         "help" => {
             out("spawn: spawn <Component>");
             out("\tThe <Component> must #[reflect(Component, Default)]");
+            out("\tThe component spawned must act as a head to any logic attached");
         }
         "spawn" => {
             out("Attempting to spawn...");

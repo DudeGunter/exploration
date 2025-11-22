@@ -1,6 +1,9 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+
+// This should all be implemented with the idea of a networking!!!
+
 pub struct CharacterControllerPlugin;
 
 impl Plugin for CharacterControllerPlugin {
