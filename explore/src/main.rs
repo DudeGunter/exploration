@@ -31,7 +31,7 @@ fn setup(mut commands: Commands) {
     //commands.spawn(Terrain);
     commands.spawn((
         FlyCam,
-        //Observer,
+        Observer,
         AreaManaged::Circle(25.0),
         Camera3d::default(),
         Atmosphere::EARTH,

@@ -2,7 +2,8 @@ use bevy::prelude::*;
 use noiz::prelude::*;
 
 // Head, this starts everything
-#[derive(Component, Reflect, Debug)]
+#[derive(Component, Reflect, Debug, Default)]
+#[reflect(Component, Default)]
 #[require(Name::new("Terrain"))]
 pub struct Terrain;
 
