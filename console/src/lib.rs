@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{input_focus::InputFocus, prelude::*};
 use bevy_ui_text_input::*;
 
 mod command;
@@ -99,13 +99,20 @@ fn print_line_to_console(
 }
 
 pub fn manage_console(
+    mut input_focus: ResMut<InputFocus>,
     input: Res<ButtonInput<KeyCode>>,
     mut visibility: Single<&mut Visibility, With<Console>>,
-    mut console_command_line: Single<&mut TextInputNode, With<ConsoleCommandLine>>,
+    console_command_line: Single<(Entity, &mut TextInputNode), With<ConsoleCommandLine>>,
 ) {
-    if input.just_pressed(KeyCode::Tab) {
-        console_command_line.is_enabled = !console_command_line.is_enabled;
+    if input.just_pressed(KeyCode::F1) {
+        let (entity, mut text_input_node) = console_command_line.into_inner();
+        text_input_node.is_enabled = !text_input_node.is_enabled;
         visibility.toggle_visible_hidden();
+        if text_input_node.is_enabled {
+            input_focus.set(entity);
+        } else if input_focus.0.is_some() && input_focus.0.unwrap() == entity {
+            input_focus.clear();
+        }
     }
 }
 
