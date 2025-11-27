@@ -2390,6 +2390,7 @@ dependencies = [
  "avian3d",
  "bevy",
  "bevy_ui_text_input",
+ "lightyear",
  "log",
  "serde",
  "tracing",

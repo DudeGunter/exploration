@@ -1,7 +1,9 @@
 use bevy::{input_focus::InputFocus, prelude::*};
 use bevy_ui_text_input::*;
+use lightyear::prelude::*;
 
 mod command;
+mod protocol;
 
 // Minecraft style text chat to enter in commands like "spawn Player" using reflect potentially
 pub struct ConsolePlugin;
@@ -21,6 +23,10 @@ impl Plugin for ConsolePlugin {
         app.add_observer(command::handle_command);
 
         app.add_message::<command::SpawnReflected>();
+
+        // This could be a feature crate, everything below here is networking between consoles
+        app.register_message::<protocol::ConsoleMessage>()
+            .add_direction(NetworkDirection::Bidirectional);
     }
 }
 
@@ -76,14 +82,16 @@ pub fn spawn_console(mut cmds: Commands) {
     ));
 }
 
-// This might not work if the bevy_ui_text_input is used anywhere else, it would pick up the message
+//  FIXED!!!: This might not work if the bevy_ui_text_input is used anywhere else, it would pick up the message
 fn print_line_to_console(
     mut messages: MessageReader<SubmitText>,
     mut cmds: Commands,
     console_message_container: Single<Entity, With<ConsoleMessageContainer>>,
+    console_command_line: Single<Entity, With<ConsoleCommandLine>>,
 ) {
+    let console_entity = console_command_line.into_inner();
     for message in messages.read() {
-        if message.text.is_empty() {
+        if message.text.is_empty() && message.entity == console_entity {
             continue;
         }
         if message.text.starts_with('/') {
