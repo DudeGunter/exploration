@@ -8076,6 +8076,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "weave"
+version = "0.1.0"
+dependencies = [
+ "avian3d",
+ "bevy",
+ "log",
+ "noiz",
+ "tracing",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
