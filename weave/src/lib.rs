@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 mod marching_cubes;
+mod noise;
 mod voxel;
 
 /// Adds all weave implementations
