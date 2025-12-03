@@ -4,8 +4,8 @@ use noiz::prelude::*;
 // Head, this starts everything
 #[derive(Component, Reflect, Debug, Default)]
 #[reflect(Component, Default)]
-#[require(Name::new("Terrain"))]
-pub struct Terrain;
+#[require(Name::new("VoxelTerrain"))]
+pub struct VoxelTerrain;
 
 // this ideally would adapt to what its set to on line 20
 #[derive(Resource, Reflect, Deref, DerefMut, Copy, Clone)]
@@ -19,7 +19,7 @@ pub struct TerrainNoise(
 pub struct TerrainMaterial(pub Handle<StandardMaterial>);
 
 pub fn setup(
-    trigger: On<Add, Terrain>,
+    trigger: On<Add, VoxelTerrain>,
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {

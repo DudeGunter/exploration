@@ -2,7 +2,7 @@
 // A rewrite is in order!!!
 use crate::{
     chunk::{CHUNK_SIZE, Chunk, VOXEL_SIZE},
-    terrain::{Terrain, TerrainMaterial, TerrainNoise},
+    terrain::{TerrainMaterial, TerrainNoise, VoxelTerrain},
 };
 use avian3d::{
     math::{AsF32, Scalar, Vector},
@@ -95,7 +95,7 @@ pub fn spawn_with_limits(
     limiter: Res<ChunkSpawnLimiter>,
     generator: Res<TerrainNoise>,
     loading_chunks: Query<(), With<Loading>>,
-    terrain: Single<Entity, With<Terrain>>,
+    terrain: Single<Entity, With<VoxelTerrain>>,
     observer: Single<&GlobalTransform, With<Observer>>,
     mut commands: Commands,
 ) {
@@ -164,7 +164,7 @@ pub fn add_desired_chunks(
 
 pub fn _spawn_missing_chunks(
     mut commands: Commands,
-    terrian: Single<Entity, With<Terrain>>,
+    terrian: Single<Entity, With<VoxelTerrain>>,
     mut manager: ResMut<ChunkManager>,
     generator: Res<TerrainNoise>,
 ) {

@@ -33,7 +33,7 @@ impl Plugin for VoxelTerrainPlugin {
                 handle_spawning_chunk,
             )
                 .chain()
-                .run_if(|terrain: Query<&terrain::Terrain>| !terrain.is_empty()),
+                .run_if(|terrain: Query<&terrain::VoxelTerrain>| !terrain.is_empty()),
         );
         app.add_observer(terrain::setup);
     }
@@ -43,5 +43,5 @@ pub mod prelude {
     pub use crate::VoxelTerrainPlugin;
     pub use crate::chunk::Chunk;
     pub use crate::manager::{AreaManaged, Observer};
-    pub use crate::terrain::{Terrain, TerrainMaterial};
+    pub use crate::terrain::{TerrainMaterial, VoxelTerrain};
 }
