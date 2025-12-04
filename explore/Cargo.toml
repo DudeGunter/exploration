@@ -13,6 +13,7 @@ log.workspace = true
 tracing.workspace = true
 voxel_terrain.workspace = true
 console.workspace = true
+weave.workspace = true
 character_controller.workspace = true
 networking = { workspace = true, features = ["udp"] }
 

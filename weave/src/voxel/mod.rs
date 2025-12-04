@@ -5,7 +5,9 @@ use noiz::prelude::*;
 pub struct VoxelPlugin;
 
 impl Plugin for VoxelPlugin {
-    fn build(&self, app: &mut App) {}
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, voxel_noise_init);
+    }
 }
 
 // Example impl

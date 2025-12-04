@@ -6,6 +6,7 @@ use bevy_flycam::prelude::*;
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use networking::prelude::*;
 use voxel_terrain::prelude::*;
+use weave::WeavePlugin;
 // Everything and anything in bevy diddy blud
 
 fn main() -> AppExit {
@@ -20,6 +21,7 @@ fn main() -> AppExit {
         WorldInspectorPlugin::new(),
         VoxelTerrainPlugin,
         NetworkingPlugin,
+        WeavePlugin,
         console::ConsolePlugin,
     ));
     app.add_systems(Startup, setup);
