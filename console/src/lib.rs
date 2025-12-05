@@ -1,4 +1,4 @@
-use crate::interface::*;
+use crate::{interface::*, protocol::ConsoleMessage};
 use bevy::{ecs::system::SystemId, input_focus::InputFocus, platform::collections::*, prelude::*};
 
 use bevy_ui_text_input::*;
@@ -22,13 +22,10 @@ impl Plugin for ConsolePlugin {
         );
         app.add_systems(
             Update,
-            (
-                handle_registering_systems,
-                handle_submit_text_routing,
-                manage_console,
-            ),
+            (registering_systems, submit_text_routing, manage_console),
         );
-        app.add_observer(handle_trying_command);
+        app.add_observer(trying_command);
+        app.add_observer(output_console_message);
         // This could be a feature crate, everything below here is networking between consoles
         app.register_message::<protocol::ConsoleMessage>()
             .add_direction(NetworkDirection::Bidirectional);
@@ -60,7 +57,6 @@ impl ConsoleConfig {
         }
     }
 
-    /// WARNING: This requires heavy World access, it shouldn't be called often or during the main game loop
     pub fn insert_command<M>(
         &mut self,
         name: String,
@@ -101,10 +97,7 @@ impl Command {
 #[derive(Event, Reflect, Deref, Clone)]
 pub struct TryCommand(pub String);
 
-pub fn handle_registering_systems(
-    mut console_config: ResMut<ConsoleConfig>,
-    mut commands: Commands,
-) {
+pub fn registering_systems(mut console_config: ResMut<ConsoleConfig>, mut commands: Commands) {
     let mut to_register = Vec::new();
 
     for (name, command) in console_config.commands.iter() {
@@ -123,7 +116,7 @@ pub fn handle_registering_systems(
     }
 }
 
-pub fn handle_trying_command(
+pub fn trying_command(
     trigger: On<TryCommand>,
     mut commands: Commands,
     console_config: Res<ConsoleConfig>,
@@ -132,7 +125,6 @@ pub fn handle_trying_command(
     let (command_name, arguments) = try_command
         .split_once(' ')
         .unwrap_or((try_command.as_str(), ""));
-    info!("Tried command {}", command_name);
     if let Some(command) = console_config.commands.get(&command_name.to_string()) {
         if let Some(system_id) = command.get_processed() {
             commands.run_system_with(system_id, arguments.to_string());
@@ -140,11 +132,10 @@ pub fn handle_trying_command(
     }
 }
 
-fn handle_submit_text_routing(
+fn submit_text_routing(
     mut messages: MessageReader<SubmitText>,
     mut commands: Commands,
     console_config: Res<ConsoleConfig>,
-    console_message_container: Single<Entity, With<ConsoleMessageContainer>>,
     console_command_line: Single<Entity, With<ConsoleCommandLine>>,
 ) {
     let console_entity = console_command_line.into_inner();
@@ -157,12 +148,7 @@ fn handle_submit_text_routing(
             command.remove(0);
             commands.trigger(TryCommand(command));
         } else {
-            let output = commands
-                .spawn(command_line_output(message.text.clone()))
-                .id();
-            commands
-                .entity(console_message_container.entity())
-                .add_child(output);
+            commands.trigger(ConsoleMessage::new(message.text.clone()));
         }
     }
 }
@@ -184,4 +170,20 @@ pub fn manage_console(
             input_focus.clear();
         }
     }
+}
+
+pub fn output_console_message(
+    console_message: On<ConsoleMessage>,
+    mut commands: Commands,
+    console_message_container: Single<Entity, With<ConsoleMessageContainer>>,
+) {
+    let output = commands
+        .spawn((
+            console_output(console_message.message.clone()),
+            TextColor(console_message.color),
+        ))
+        .id();
+    commands
+        .entity(console_message_container.entity())
+        .add_child(output);
 }

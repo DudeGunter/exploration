@@ -33,14 +33,8 @@ pub fn spawn_reflected(In(component): In<String>, world: &mut World) {
         output_color = Color::srgb(1.0, 0.4, 0.4);
     }
 
-    // This spawning logic could be refined, although the dir world access makes it annoying
-    let command_line = world
-        .spawn((command_line_output(output), TextColor(output_color)))
-        .id();
-    let container = world
-        .query::<(Entity, &ConsoleMessageContainer)>()
-        .single(world)
-        .unwrap()
-        .0;
-    world.commands().entity(container).add_child(command_line);
+    world.trigger(crate::protocol::ConsoleMessage {
+        message: output,
+        color: output_color,
+    });
 }

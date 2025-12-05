@@ -53,7 +53,7 @@ pub fn spawn_console(mut cmds: Commands) {
     ));
 }
 
-pub fn command_line_output(text: String) -> impl Bundle {
+pub fn console_output(text: String) -> impl Bundle {
     (
         Name::new(format!("Message: {text}")),
         Node {
