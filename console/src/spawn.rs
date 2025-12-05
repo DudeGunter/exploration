@@ -5,6 +5,7 @@ pub fn add_spawn_command(mut console_config: ResMut<ConsoleConfig>) {
 }
 
 pub fn spawn_reflected(In(component): In<String>, world: &mut World) {
+    info!("Attempting to spawn component: {}", component);
     let component_to_insert = {
         let registry = world.get_resource::<AppTypeRegistry>().unwrap().read();
         registry

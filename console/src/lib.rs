@@ -38,6 +38,7 @@ impl Plugin for ConsolePlugin {
 #[derive(Resource)]
 pub struct ConsoleConfig {
     prefix: char,
+    open_close_key: KeyCode,
     commands: HashMap<String, Command>,
 }
 
@@ -45,6 +46,7 @@ impl Default for ConsoleConfig {
     fn default() -> Self {
         Self {
             prefix: '/',
+            open_close_key: KeyCode::F1,
             commands: HashMap::new(),
         }
     }
@@ -54,7 +56,7 @@ impl ConsoleConfig {
     pub fn new(prefix: char) -> Self {
         Self {
             prefix,
-            commands: HashMap::new(),
+            ..default()
         }
     }
 
@@ -126,10 +128,14 @@ pub fn handle_trying_command(
     mut commands: Commands,
     console_config: Res<ConsoleConfig>,
 ) {
-    let command_name = trigger.0.clone();
-    if let Some(command) = console_config.commands.get(&command_name) {
+    let try_command = trigger.0.clone();
+    let (command_name, arguments) = try_command
+        .split_once(' ')
+        .unwrap_or((try_command.as_str(), ""));
+    info!("Tried command {}", command_name);
+    if let Some(command) = console_config.commands.get(&command_name.to_string()) {
         if let Some(system_id) = command.get_processed() {
-            commands.run_system_with(system_id, "gttybfv".to_string());
+            commands.run_system_with(system_id, arguments.to_string());
         }
     }
 }
@@ -162,12 +168,13 @@ fn handle_submit_text_routing(
 }
 
 pub fn manage_console(
+    console_config: Res<ConsoleConfig>,
     mut input_focus: ResMut<InputFocus>,
     input: Res<ButtonInput<KeyCode>>,
     mut visibility: Single<&mut Visibility, With<Console>>,
     console_command_line: Single<(Entity, &mut TextInputNode), With<ConsoleCommandLine>>,
 ) {
-    if input.just_pressed(KeyCode::F1) {
+    if input.just_pressed(console_config.open_close_key) {
         let (entity, mut text_input_node) = console_command_line.into_inner();
         text_input_node.is_enabled = !text_input_node.is_enabled;
         visibility.toggle_visible_hidden();

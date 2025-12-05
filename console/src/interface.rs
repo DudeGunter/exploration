@@ -60,7 +60,8 @@ pub fn command_line_output(text: String) -> impl Bundle {
             height: px(24),
             ..default()
         },
-        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
+        // Removed for now, visual bug can be simply fixed but I think this looks cleaner generally
+        //BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
         Text::new(text),
     )
 }
