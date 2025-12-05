@@ -4,8 +4,7 @@ use bevy::{ecs::system::SystemId, input_focus::InputFocus, platform::collections
 use bevy_ui_text_input::*;
 use lightyear::prelude::*;
 
-mod command;
-mod experimental;
+//mod command;
 mod interface;
 mod protocol;
 mod spawn;
@@ -17,12 +16,19 @@ impl Plugin for ConsolePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(TextInputPlugin);
         app.init_resource::<ConsoleConfig>();
-        app.add_systems(Startup, interface::spawn_console);
-
-        app.add_observer(command::handle_command);
-
-        app.add_message::<command::SpawnReflected>();
-
+        app.add_systems(
+            Startup,
+            (interface::spawn_console, spawn::add_spawn_command),
+        );
+        app.add_systems(
+            Update,
+            (
+                handle_registering_systems,
+                handle_submit_text_routing,
+                manage_console,
+            ),
+        );
+        app.add_observer(handle_trying_command);
         // This could be a feature crate, everything below here is networking between consoles
         app.register_message::<protocol::ConsoleMessage>()
             .add_direction(NetworkDirection::Bidirectional);
@@ -61,7 +67,7 @@ impl ConsoleConfig {
         M: 'static,
     {
         // Store a closure that will register the system when called
-        let closure = Box::new(move |world: &mut World| world.register_system(system));
+        let closure = Box::new(move |mut commands: Commands| commands.register_system(system));
         self.commands
             .insert(name, Command::NeedsProcessing(closure));
     }
@@ -73,7 +79,7 @@ impl ConsoleConfig {
 
 // Used to manage command systems
 pub enum Command {
-    NeedsProcessing(Box<dyn FnOnce(&mut World) -> SystemId<In<String>> + Send + Sync>),
+    NeedsProcessing(Box<dyn FnOnce(Commands) -> SystemId<In<String>> + Send + Sync>),
     Processed(SystemId<In<String>>),
 }
 
@@ -93,37 +99,21 @@ impl Command {
 #[derive(Event, Reflect, Deref, Clone)]
 pub struct TryCommand(pub String);
 
-pub fn handle_registering_systems(world: &mut World) {
+pub fn handle_registering_systems(
+    mut console_config: ResMut<ConsoleConfig>,
+    mut commands: Commands,
+) {
     let mut to_register = Vec::new();
 
-    // Collect names of systems that need registration
-    if let Some(console_config) = world.get_resource::<ConsoleConfig>() {
-        for (name, command) in console_config.commands.iter() {
-            if matches!(command, Command::NeedsProcessing(_)) {
-                to_register.push(name.clone());
-            }
+    for (name, command) in console_config.commands.iter() {
+        if !command.is_processed() {
+            to_register.push(name.clone());
         }
     }
 
-    // Register each system
     for name in to_register {
-        let system_id = if let Some(mut console_config) = world.get_resource_mut::<ConsoleConfig>()
-        {
-            if let Some(Command::NeedsProcessing(register_fn)) =
-                console_config.commands.remove(&name)
-            {
-                Some(register_fn(world))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        // Store the SystemId back
-        if let (Some(system_id), Some(mut console_config)) =
-            (system_id, world.get_resource_mut::<ConsoleConfig>())
-        {
+        if let Some(Command::NeedsProcessing(register_fn)) = console_config.commands.remove(&name) {
+            let system_id = register_fn(commands.reborrow());
             console_config
                 .commands
                 .insert(name, Command::Processed(system_id));
@@ -159,7 +149,7 @@ fn handle_submit_text_routing(
         if message.text.starts_with(console_config.prefix) {
             let mut command = message.text.clone();
             command.remove(0);
-            commands.trigger(command::TryCommand(command));
+            commands.trigger(TryCommand(command));
         } else {
             let output = commands
                 .spawn(command_line_output(message.text.clone()))
