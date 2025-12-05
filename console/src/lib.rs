@@ -5,6 +5,7 @@ use lightyear::prelude::*;
 
 mod command;
 mod experimental;
+mod interface;
 mod protocol;
 
 // Minecraft style text chat to enter in commands like "spawn Player" using reflect potentially
