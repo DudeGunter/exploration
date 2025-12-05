@@ -7,20 +7,11 @@ pub struct ConsoleConfig {
     commands: HashMap<String, Command>,
 }
 
-enum Command {
-    NeedsProcessing(Box<dyn FnOnce(&mut World) -> SystemId + Send + Sync>),
-    Processed(SystemId),
-}
-
-impl Command {
-    pub fn is_processed(&self) -> bool {
-        matches!(self, Command::Processed(_))
-    }
-
-    pub fn get_processed(&self) -> Option<SystemId> {
-        match self {
-            Command::Processed(id) => Some(*id),
-            _ => None,
+impl Default for ConsoleConfig {
+    fn default() -> Self {
+        Self {
+            prefix: '/',
+            commands: HashMap::new(),
         }
     }
 }
@@ -49,6 +40,24 @@ impl ConsoleConfig {
 
     pub fn get_commands(&self) -> Vec<&String> {
         self.commands.keys().collect()
+    }
+}
+
+enum Command {
+    NeedsProcessing(Box<dyn FnOnce(&mut World) -> SystemId + Send + Sync>),
+    Processed(SystemId),
+}
+
+impl Command {
+    pub fn is_processed(&self) -> bool {
+        matches!(self, Command::Processed(_))
+    }
+
+    pub fn get_processed(&self) -> Option<SystemId> {
+        match self {
+            Command::Processed(id) => Some(*id),
+            _ => None,
+        }
     }
 }
 

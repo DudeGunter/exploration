@@ -1,57 +1,10 @@
 use crate::*;
 
-#[derive(Event, Reflect, Deref, Clone)]
-pub struct TryCommand(pub String);
-
-pub fn handle_command(
-    trigger: On<TryCommand>,
-    mut commands: Commands,
-    mut message_writer: MessageWriter<SpawnReflected>,
-    console_message_container: Single<Entity, With<ConsoleMessageContainer>>,
-) {
-    let (cmd, args) = trigger
-        .event()
-        .split_once(' ')
-        .unwrap_or((trigger.event(), ""));
-    // You may think to use spawn_batch here, but it isn't currently possible because
-    // you can't fetch the entities post spawn_batch to add to the container
-    // and you ain't spawning jack shit
-    let mut outputs: Vec<Entity> = Vec::new();
-    // Each acts as its own line in the console
-    let mut out = |message: &str| {
-        // lil func action
-        outputs.push(
-            commands
-                .spawn(command_line_output(message.to_string()))
-                .id(),
-        );
-    };
-    match cmd {
-        "help" => {
-            out("spawn: spawn <Component>");
-            out("\tThe <Component> must #[reflect(Component, Default)]");
-            out("\tThe component spawned must act as a head to any logic attached");
-        }
-        "spawn" => {
-            out("Attempting to spawn...");
-            message_writer.write(SpawnReflected(args.to_string()));
-        }
-        "67" => out("67"),
-        _ => out("Unknown command"),
-    }
-    commands
-        .entity(console_message_container.entity())
-        .add_children(outputs.as_slice());
+pub fn add_spawn_command(mut console_config: ResMut<ConsoleConfig>) {
+    console_config.insert_command("spawn".to_string(), spawn_reflected);
 }
 
-/// Attempts to spawn an entity based off the given type string.
-/// The type must #[reflect(Component, Default)]
-/// Uses direct world access which is taxing, but allowed here as a dev tool
-/// FYI: direct world access doesn't allow any other process to run in parallel
-#[derive(Message, Deref)]
-pub struct SpawnReflected(String);
-
-pub fn spawn_reflected(In(component_type): In<String>, world: &mut World) {
+pub fn spawn_reflected(world: &mut World) {
     let events: Vec<SpawnReflected> = world
         .resource_mut::<Messages<SpawnReflected>>()
         .drain()

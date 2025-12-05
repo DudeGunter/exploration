@@ -1,7 +1,5 @@
-use bevy::{input_focus::InputFocus, platform::collections::*, prelude::*};
-
+use bevy::prelude::*;
 use bevy_ui_text_input::*;
-use lightyear::prelude::*;
 
 #[derive(Component, Debug, Reflect, Default)]
 #[reflect(Component, Default)]
@@ -53,4 +51,16 @@ pub fn spawn_console(mut cmds: Commands) {
             )
         ],
     ));
+}
+
+pub fn command_line_output(text: String) -> impl Bundle {
+    (
+        Name::new(format!("Message: {text}")),
+        Node {
+            height: px(24),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
+        Text::new(text),
+    )
 }
