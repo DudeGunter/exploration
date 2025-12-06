@@ -7,6 +7,7 @@ pub struct ConsoleMessage {
     pub color: Color,
 }
 
+// this is here for that ..default notation for later on when there are more fields
 impl Default for ConsoleMessage {
     fn default() -> Self {
         ConsoleMessage {

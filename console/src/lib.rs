@@ -18,7 +18,11 @@ impl Plugin for ConsolePlugin {
         app.init_resource::<ConsoleConfig>();
         app.add_systems(
             Startup,
-            (interface::spawn_console, spawn::add_spawn_command),
+            (
+                interface::spawn_console,
+                spawn::add_spawn_command,
+                default_commands,
+            ),
         );
         app.add_systems(
             Update,
@@ -32,11 +36,22 @@ impl Plugin for ConsolePlugin {
     }
 }
 
+/// Note: Spawn is added in the spawn.rs file
+fn default_commands(mut console_config: ResMut<ConsoleConfig>) {
+    console_config.insert_command("help".to_string(), |_: In<String>| {
+        info!("ts don't work rn");
+    });
+    console_config.insert_command("67".to_string(), |_: In<String>, mut commands: Commands| {
+        commands.trigger(ConsoleMessage::new("67".to_string()))
+    });
+}
+
 #[derive(Resource)]
 pub struct ConsoleConfig {
     prefix: char,
     open_close_key: KeyCode,
-    commands: HashMap<String, Command>,
+    // Why not combine the two if they have the same key? idk seems like too much work for insertion
+    commands: HashMap<String, (CommandSystem, Option<CommandMetadata>)>,
 }
 
 impl Default for ConsoleConfig {
@@ -67,28 +82,60 @@ impl ConsoleConfig {
         // Store a closure that will register the system when called
         let closure = Box::new(move |mut commands: Commands| commands.register_system(system));
         self.commands
-            .insert(name, Command::NeedsProcessing(closure));
+            .insert(name, (CommandSystem::NeedsProcessing(closure), None));
+    }
+
+    pub fn insert_command_with_metadata<M>(
+        &mut self,
+        name: String,
+        metadata: CommandMetadata,
+        system: impl IntoSystem<In<String>, (), M> + Send + Sync + 'static,
+    ) where
+        M: 'static,
+    {
+        // Store a closure that will register the system when called
+        let closure = Box::new(move |mut commands: Commands| commands.register_system(system));
+        self.commands.insert(
+            name.clone(),
+            (CommandSystem::NeedsProcessing(closure), Some(metadata)),
+        );
     }
 
     pub fn get_commands(&self) -> Vec<&String> {
         self.commands.keys().collect()
     }
+
+    pub fn get_system(&self, name: &str) -> Option<&CommandSystem> {
+        self.commands.get(name).map(|(system, _)| system)
+    }
+
+    pub fn get_metadata(&self, name: String) -> &Option<CommandMetadata> {
+        match self.commands.get(&name) {
+            Some((_, metadata)) => metadata,
+            None => &None,
+        }
+    }
+}
+
+pub struct CommandMetadata {
+    description: String,
+    usage: String,
 }
 
 // Used to manage command systems
-pub enum Command {
+pub enum CommandSystem {
     NeedsProcessing(Box<dyn FnOnce(Commands) -> SystemId<In<String>> + Send + Sync>),
     Processed(SystemId<In<String>>),
 }
 
-impl Command {
+impl CommandSystem {
     pub fn is_processed(&self) -> bool {
-        matches!(self, Command::Processed(_))
+        matches!(self, CommandSystem::Processed(_))
     }
 
     pub fn get_processed(&self) -> Option<SystemId<In<String>>> {
         match self {
-            Command::Processed(id) => Some(*id),
+            CommandSystem::Processed(id) => Some(*id),
             _ => None,
         }
     }
@@ -100,18 +147,20 @@ pub struct TryCommand(pub String);
 pub fn registering_systems(mut console_config: ResMut<ConsoleConfig>, mut commands: Commands) {
     let mut to_register = Vec::new();
 
-    for (name, command) in console_config.commands.iter() {
+    for (name, (command, _)) in console_config.commands.iter() {
         if !command.is_processed() {
             to_register.push(name.clone());
         }
     }
 
     for name in to_register {
-        if let Some(Command::NeedsProcessing(register_fn)) = console_config.commands.remove(&name) {
+        if let Some((CommandSystem::NeedsProcessing(register_fn), metadata)) =
+            console_config.commands.remove(&name)
+        {
             let system_id = register_fn(commands.reborrow());
             console_config
                 .commands
-                .insert(name, Command::Processed(system_id));
+                .insert(name, (CommandSystem::Processed(system_id), metadata));
         }
     }
 }
@@ -125,7 +174,7 @@ pub fn trying_command(
     let (command_name, arguments) = try_command
         .split_once(' ')
         .unwrap_or((try_command.as_str(), ""));
-    if let Some(command) = console_config.commands.get(&command_name.to_string()) {
+    if let Some(command) = console_config.get_system(&command_name.to_string()) {
         if let Some(system_id) = command.get_processed() {
             commands.run_system_with(system_id, arguments.to_string());
         }
