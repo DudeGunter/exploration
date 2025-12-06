@@ -72,22 +72,23 @@ impl ConsoleConfig {
         }
     }
 
-    pub fn insert_command<M>(
+    pub fn insert_command<M, S: Into<String>>(
         &mut self,
-        name: String,
+        name: S,
         system: impl IntoSystem<In<String>, (), M> + Send + Sync + 'static,
     ) where
         M: 'static,
     {
         // Store a closure that will register the system when called
         let closure = Box::new(move |mut commands: Commands| commands.register_system(system));
+        let name = name.into();
         self.commands
             .insert(name, (CommandSystem::NeedsProcessing(closure), None));
     }
 
-    pub fn insert_command_with_metadata<M>(
+    pub fn insert_command_with_metadata<M, S: Into<String>>(
         &mut self,
-        name: String,
+        name: S,
         metadata: CommandMetadata,
         system: impl IntoSystem<In<String>, (), M> + Send + Sync + 'static,
     ) where
@@ -95,6 +96,7 @@ impl ConsoleConfig {
     {
         // Store a closure that will register the system when called
         let closure = Box::new(move |mut commands: Commands| commands.register_system(system));
+        let name = name.into();
         self.commands.insert(
             name.clone(),
             (CommandSystem::NeedsProcessing(closure), Some(metadata)),
@@ -105,11 +107,13 @@ impl ConsoleConfig {
         self.commands.keys().collect()
     }
 
-    pub fn get_system(&self, name: &str) -> Option<&CommandSystem> {
-        self.commands.get(name).map(|(system, _)| system)
+    pub fn get_system<S: Into<String>>(&self, name: S) -> Option<&CommandSystem> {
+        let name = name.into();
+        self.commands.get(&name).map(|(system, _)| system)
     }
 
-    pub fn get_metadata(&self, name: String) -> &Option<CommandMetadata> {
+    pub fn get_metadata<S: Into<String>>(&self, name: S) -> &Option<CommandMetadata> {
+        let name = name.into();
         match self.commands.get(&name) {
             Some((_, metadata)) => metadata,
             None => &None,

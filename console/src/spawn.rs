@@ -1,7 +1,7 @@
 use crate::*;
 
 pub fn add_spawn_command(mut console_config: ResMut<ConsoleConfig>) {
-    console_config.insert_command("spawn".to_string(), spawn_reflected);
+    console_config.insert_command("spawn", spawn_reflected);
 }
 
 pub fn spawn_reflected(In(component): In<String>, world: &mut World) {
