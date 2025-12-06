@@ -28,9 +28,17 @@ fn main() -> AppExit {
     app.run()
 }
 
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub struct Test {
+    pub thing: bool,
+}
+
 fn setup(mut commands: Commands) {
     commands.trigger(Host::default());
     //commands.spawn(Terrain);
+    //
+    commands.spawn(Test::default());
     commands.spawn((
         FlyCam,
         Observer,
