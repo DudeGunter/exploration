@@ -7,7 +7,7 @@ use lightyear::prelude::*;
 //mod command;
 mod interface;
 mod protocol;
-mod spawn;
+mod systems;
 
 // Minecraft style text chat to enter in commands like "spawn Player" using reflect potentially
 pub struct ConsolePlugin;
@@ -18,11 +18,7 @@ impl Plugin for ConsolePlugin {
         app.init_resource::<ConsoleConfig>();
         app.add_systems(
             Startup,
-            (
-                interface::spawn_console,
-                spawn::add_spawn_command,
-                default_commands,
-            ),
+            (interface::spawn_console, systems::default_commands),
         );
         app.add_systems(
             Update,
@@ -36,21 +32,10 @@ impl Plugin for ConsolePlugin {
     }
 }
 
-/// Note: Spawn is added in the spawn.rs file
-fn default_commands(mut console_config: ResMut<ConsoleConfig>) {
-    console_config.insert_command("help".to_string(), |_: In<String>| {
-        info!("ts don't work rn");
-    });
-    console_config.insert_command("67".to_string(), |_: In<String>, mut commands: Commands| {
-        commands.trigger(ConsoleMessage::new("67".to_string()))
-    });
-}
-
 #[derive(Resource)]
 pub struct ConsoleConfig {
     prefix: char,
     open_close_key: KeyCode,
-    // Why not combine the two if they have the same key? idk seems like too much work for insertion
     commands: HashMap<String, (CommandSystem, Option<CommandMetadata>)>,
 }
 

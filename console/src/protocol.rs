@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use serde::*;
 
+///BIG NOTE: it could be more effiecent if a large amount of lines are being outputed
+/// to send them as a vec or list of somesort as to not run the same observer 100x times over
 #[derive(Event, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ConsoleMessage {
     pub message: String,
@@ -18,9 +20,9 @@ impl Default for ConsoleMessage {
 }
 
 impl ConsoleMessage {
-    pub fn new(message: String) -> Self {
+    pub fn new<S: Into<String>>(message: S) -> Self {
         ConsoleMessage {
-            message,
+            message: message.into(),
             ..default()
         }
     }
