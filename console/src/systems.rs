@@ -24,7 +24,6 @@ pub fn default_commands(mut console_config: ResMut<ConsoleConfig>) {
 }
 
 pub fn help(In(argument): In<String>, console_config: Res<ConsoleConfig>, mut commands: Commands) {
-    info!("Help command ran with the argument: {}", argument);
     if argument.is_empty() {
         for command in console_config.get_commands() {
             match console_config.get_metadata(command) {
@@ -39,7 +38,7 @@ pub fn help(In(argument): In<String>, console_config: Res<ConsoleConfig>, mut co
                         metadata.usage
                     )));
                 }
-                None => info!("Command not found: {}", command),
+                None => (),
             }
         }
     } else {
@@ -64,7 +63,6 @@ pub fn help(In(argument): In<String>, console_config: Res<ConsoleConfig>, mut co
 }
 
 pub fn spawn_reflected(In(component): In<String>, world: &mut World) {
-    info!("Attempting to spawn component: {}", component);
     let component_to_insert = {
         let registry = world.get_resource::<AppTypeRegistry>().unwrap().read();
         registry

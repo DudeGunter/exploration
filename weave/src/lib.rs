@@ -2,12 +2,14 @@
 // The *weave* so to speak, currently there shuold be voxel and marching
 use bevy::prelude::*;
 
+mod area;
 mod marching_cubes;
 mod noise;
 mod voxel;
 
 /// Adds all weave implementations
 /// This includes voxel and marching and their respective terrains
+
 pub struct WeavePlugin;
 
 impl Plugin for WeavePlugin {
