@@ -16,8 +16,7 @@ pub fn default_commands(mut console_config: ResMut<ConsoleConfig>) {
     console_config.insert_command_with_metadata(
         "set_field",
         CommandMetadata {
-            description: "Set a field on a singleton entity. Requires exclusive World access"
-                .to_string(),
+            description: "Set a field on a singleton entity.(no work, expensive)".to_string(),
             usage: "set_field <component> <field> <value>".to_string(),
         },
         set_field,
@@ -102,7 +101,13 @@ pub fn spawn_reflected(In(component): In<String>, world: &mut World) {
 use bevy::reflect::{ReflectMut, serde::ReflectDeserializer};
 use serde::de::DeserializeSeed;
 
+#[allow(unreachable_code, unused_variables)]
 fn set_field(In(arguments): In<String>, world: &mut World) {
+    world.trigger(ConsoleMessage::new(
+        "This doesn't work right now! Use the egui world inspector to modify components",
+    ));
+    return;
+
     let parts: Vec<&str> = arguments.split_whitespace().collect();
 
     if parts.len() < 3 {
@@ -143,46 +148,52 @@ fn set_field(In(arguments): In<String>, world: &mut World) {
                 world.resource_scope(|world, registry: Mut<AppTypeRegistry>| {
                     let registry = registry.read();
                     if let Ok(mut entity_mut) = world.get_entity_mut(entity) {
-                        if let Some(mut reflected) = reflect_component.reflect_mut(&mut entity_mut)
-                        {
+                        if let Some(mut reflected) = reflect_component.reflect_mut(&mut entity_mut) {
                             // Match on the ReflectMut enum to get the Struct variant
                             if let ReflectMut::Struct(struct_mut) = reflected.reflect_mut() {
                                 if let Some(field) = struct_mut.field_mut(field_name) {
-                                    // Deserialize the string value as RON - wrap in parentheses for tuple syntax
-                                    let ron_str = format!("({})", value);
-                                    if let Ok(mut deserializer) =
-                                        ron::Deserializer::from_str(&ron_str)
-                                    {
-                                        let reflect_deserializer =
-                                            ReflectDeserializer::new(&registry);
-                                        if let Ok(new_val) =
-                                            reflect_deserializer.deserialize(&mut deserializer)
-                                        {
-                                            // Apply the new value to the field
-                                            field.apply(new_val.as_partial_reflect());
-                                            world.trigger(ConsoleMessage::new(format!(
-                                                "Set {}.{} = {}",
-                                                component_name, field_name, value
-                                            )));
-                                            found = true;
-                                        } else {
-                                            world.trigger(ConsoleMessage::new(format!(
-                                                "Failed to deserialize value for field '{}'",
-                                                field_name
-                                            )));
+                                    // Get the full type path of the component
+                                    let type_path = registry
+                                        .get_with_short_type_path(component_name)
+                                        .map(|reg| reg.type_info().type_path())
+                                        .unwrap_or(component_name);
+
+                                    // Deserialize the string value as RON with full type path and field name
+                                    let ron_str = format!("{{ \"{}\": ( {}: {} ) }}", type_path, field_name, value);
+                                    println!("DEBUG: Attempting to deserialize '{}' as RON", ron_str);
+                                    if let Ok(mut deserializer) = ron::Deserializer::from_str(&ron_str) {
+                                        let reflect_deserializer = ReflectDeserializer::new(&registry);
+                                        match reflect_deserializer.deserialize(&mut deserializer) {
+                                            Ok(new_val) => {
+                                                println!("DEBUG: Successfully deserialized value");
+                                                // Apply the new value to the field
+                                                field.apply(new_val.as_partial_reflect());
+                                                world.trigger(ConsoleMessage::new(
+                                                    format!("Set {}.{} = {}", component_name, field_name, value)
+                                                ));
+                                                found = true;
+                                            }
+                                            Err(e) => {
+                                                println!("DEBUG: Deserialization error: {:?}", e);
+                                                world.trigger(ConsoleMessage::new(
+                                                    format!("Failed to deserialize value for field '{}': {:?}", field_name, e)
+                                                ));
+                                            }
                                         }
+                                    } else {
+                                        world.trigger(ConsoleMessage::new(
+                                            format!("Failed to create RON deserializer")
+                                        ));
                                     }
                                 } else {
-                                    world.trigger(ConsoleMessage::new(format!(
-                                        "Field '{}' not found on {}",
-                                        field_name, component_name
-                                    )));
+                                    world.trigger(ConsoleMessage::new(
+                                        format!("Field '{}' not found on {}", field_name, component_name)
+                                    ));
                                 }
                             } else {
-                                world.trigger(ConsoleMessage::new(format!(
-                                    "Component '{}' is not a struct",
-                                    component_name
-                                )));
+                                world.trigger(ConsoleMessage::new(
+                                    format!("Component '{}' is not a struct", component_name)
+                                ));
                             }
                         }
                     }

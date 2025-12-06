@@ -57,7 +57,7 @@ pub fn console_output(text: String) -> impl Bundle {
     (
         Name::new(format!("Message: {text}")),
         Node {
-            height: px(24),
+            min_height: px(24),
             ..default()
         },
         // Removed for now, visual bug can be simply fixed but I think this looks cleaner generally
