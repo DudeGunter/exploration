@@ -1,15 +1,13 @@
 [package]
-name = "weave"
+name = "arcade"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 bevy.workspace = true
-bytemuck.workspace = true
-avian3d.workspace = true
-noiz.workspace = true
 log.workspace = true
 tracing.workspace = true
+
 
 # Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.
 # In some cases they may still signal poor code quality however, so consider commenting out these lines.

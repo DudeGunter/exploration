@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use noiz::prelude::*;
 
-// This I allows it so
+mod field_compute;
+
+// No longer gonna be used, going for compute shader approach
 #[derive(Resource, Deref, DerefMut, Clone, Copy)]
 pub struct TerrainNoise<N>(pub Noise<N>);
 
