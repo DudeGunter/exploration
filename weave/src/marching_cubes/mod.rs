@@ -1,4 +1,4 @@
-use crate::{area::RequestChunk, terrain::*};
+use crate::terrain::*;
 use bevy::prelude::*;
 
 mod tables;
@@ -48,5 +48,5 @@ impl TerrainNoiseParams for NoiseParams {
 }
 
 pub fn request_area(mut commands: Commands) {
-    commands.trigger(RequestChunk::<NoiseParams>::new(IVec2::ZERO))
+    commands.trigger(RequestGenerate::<NoiseParams>::new(IVec2::ZERO))
 }
