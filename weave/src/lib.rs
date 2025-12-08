@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 mod area;
 mod marching_cubes;
-mod noise;
+mod terrain;
 mod voxel;
 
 /// Adds all weave implementations
@@ -19,7 +19,7 @@ impl Plugin for WeavePlugin {
         app.add_plugins((
             marching_cubes::MarchingCubesPlugin,
             voxel::VoxelPlugin,
-            noise::field_compute::NoiseFieldComputePlugin,
+            terrain::field_compute::NoiseFieldComputePlugin,
         ));
     }
 }

@@ -88,10 +88,6 @@ pub struct NoiseFieldQueue {
     pub in_flight: std::collections::HashMap<IVec3, NoiseField>,
 }
 
-pub fn queue_noise_field_request(trigger: On<RequestChunk>, mut queue: ResMut<NoiseFieldQueue>) {
-    // Placeholder for requests
-}
-
 pub fn dispatch_noise_field_compute(mut queue: ResMut<NoiseFieldQueue>, device: Res<RenderDevice>) {
     let pending: Vec<_> = queue.pending.drain(..).collect();
 
@@ -184,7 +180,7 @@ fn init_noise_field_pipeline(
         label: Some("noise_field_compute_pipeline".into()),
         layout: vec![bind_group_layout.clone()],
         push_constant_ranges: vec![],
-        shader: asset_server.load("embedded://weave/noise/noise_field.wgsl"),
+        shader: asset_server.load("embedded://weave/terrain/noise_field.wgsl"),
         shader_defs: vec![],
         entry_point: Some(Cow::from("main")),
         ..default()
@@ -196,10 +192,6 @@ fn init_noise_field_pipeline(
     });
 }
 
-// ============================================================================
-// PLUGIN
-// ============================================================================
-
 pub struct NoiseFieldComputePlugin;
 
 impl Plugin for NoiseFieldComputePlugin {
@@ -207,12 +199,10 @@ impl Plugin for NoiseFieldComputePlugin {
         // Register embedded shader
         embedded_asset!(app, "noise_field.wgsl");
 
-        app.init_resource::<NoiseFieldQueue>()
-            .add_observer(queue_noise_field_request)
-            .add_systems(
-                Update,
-                (dispatch_noise_field_compute, readback_noise_field).chain(),
-            );
+        app.init_resource::<NoiseFieldQueue>().add_systems(
+            Update,
+            (dispatch_noise_field_compute, readback_noise_field).chain(),
+        );
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
         render_app.add_systems(

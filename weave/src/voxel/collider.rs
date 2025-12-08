@@ -10,7 +10,7 @@ pub struct ChunkCollider {
 pub struct ColliderReady {
     pub coord: IVec2,
     pub vertices: Vec<Vec3>,
-    pub indices: Vec<u32>, // Flat index buffer: [i0, i1, i2, i3, i4, i5, ...] where each triplet is a triangle
+    pub indices: Vec<u32>,
 }
 
 pub fn on_collider_ready(trigger: On<ColliderReady>, mut commands: Commands) {

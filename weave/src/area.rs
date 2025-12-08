@@ -36,8 +36,21 @@ pub enum LodLevel {
     High,
 }
 
+/// Request a chunk of a noise parameter
 #[derive(Event)]
-pub struct RequestChunk(IVec2);
+pub struct RequestChunk<T: crate::terrain::TerrainNoiseParams> {
+    pub position: IVec2,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T: crate::terrain::TerrainNoiseParams> RequestChunk<T> {
+    pub fn new(position: IVec2) -> Self {
+        Self {
+            position,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
 
 // possibly generic???
 pub fn area_manager(area: Query<&AreaManaged, With<Observer>>) {}
