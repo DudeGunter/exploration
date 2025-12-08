@@ -27,7 +27,7 @@ fn hash(v: vec3<f32>) -> f32 {
         dot(v, vec3<f32>(269.5, 183.3, 246.1)),
         dot(v, vec3<f32>(113.5, 271.9, 124.6))
     );
-    return fract(sin(p) * 43758.5453123);
+    return fract(sin(p.x) * 43758.5453123 + sin(p.y) * 12345.6789 + sin(p.z) * 98765.4321);
 }
 
 // Smoothstep interpolation (Hermite curve)

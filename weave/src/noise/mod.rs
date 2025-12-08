@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use noiz::prelude::*;
 
-mod field_compute;
+pub mod field_compute;
 
 // No longer gonna be used, going for compute shader approach
 #[derive(Resource, Deref, DerefMut, Clone, Copy)]

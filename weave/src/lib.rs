@@ -16,7 +16,11 @@ impl Plugin for WeavePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, hello);
 
-        app.add_plugins((marching_cubes::MarchingCubesPlugin, voxel::VoxelPlugin));
+        app.add_plugins((
+            marching_cubes::MarchingCubesPlugin,
+            voxel::VoxelPlugin,
+            noise::field_compute::NoiseFieldComputePlugin,
+        ));
     }
 }
 
