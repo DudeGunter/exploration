@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use field_compute::*;
 
 pub mod field_compute;
-pub mod mesh;
 
 /// Handles the compute shader noise
 pub struct TerrainNoisePlugin<T: TerrainNoiseParams + Clone>(pub T);

@@ -1,6 +1,7 @@
 use crate::terrain::*;
 use bevy::prelude::*;
 
+mod mesh;
 mod tables;
 
 pub struct MarchingCubesPlugin;
