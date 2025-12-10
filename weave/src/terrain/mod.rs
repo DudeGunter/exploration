@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use field_compute::*;
 
 pub mod field_compute;
+pub mod mesh;
 
 /// Handles the compute shader noise
 pub struct TerrainNoisePlugin<T: TerrainNoiseParams + Clone>(pub T);
@@ -9,8 +10,7 @@ pub struct TerrainNoisePlugin<T: TerrainNoiseParams + Clone>(pub T);
 impl<T: TerrainNoiseParams + Clone> Plugin for TerrainNoisePlugin<T> {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.0.clone());
-        app.add_observer(queue_noise_field_request::<T>);
-        app.add_systems(Update, output_fields);
+        app.add_observer(queue_chunk::<T>);
     }
 }
 
@@ -44,16 +44,15 @@ impl<T: TerrainNoiseParams + Clone> RequestGenerate<T> {
     }
 }
 
-pub fn queue_noise_field_request<C: crate::terrain::TerrainNoiseParams>(
+fn queue_chunk<C: crate::terrain::TerrainNoiseParams>(
     trigger: On<RequestGenerate<C>>,
-    mut queue: ResMut<NoiseFieldQueue>,
+    mut commands: Commands,
+    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
+    mut requests: ResMut<NoiseRequests>,
     params: Res<C>,
 ) {
-    info!(
-        "Trying to queue noise field request at {:?}",
-        trigger.position
-    );
-    let coord = trigger.position;
+    let coord = trigger.event().position;
+    let chunk_coord = IVec3::new(coord.x, coord.y, 0);
 
     let noise_params = NoiseParams {
         chunk_x: coord.x,
@@ -66,14 +65,12 @@ pub fn queue_noise_field_request<C: crate::terrain::TerrainNoiseParams>(
         _padding: 0,
     };
 
-    queue
-        .pending
-        .push((IVec3::new(coord.x, coord.y, coord.z), noise_params));
-}
+    let mut buffer =
+        ShaderStorageBuffer::from(vec![0f32; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize]);
+    buffer.buffer_description.usage |= BufferUsages::COPY_SRC;
+    let buffer_handle = buffers.add(buffer);
 
-pub fn output_fields(mut trigger: ResMut<NoiseFieldQueue>) {
-    trigger
-        .ready
-        .drain(..)
-        .for_each(|field| info!("{:?}", field.values));
+    let entity = commands.spawn((Readback::buffer(buffer_handle),)).id();
+
+    requests.0.insert(entity, (chunk_coord, noise_params));
 }

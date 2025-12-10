@@ -2,6 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 #[derive(Component)]
+#[allow(unused)]
 pub struct ChunkCollider {
     pub coord: IVec2,
 }

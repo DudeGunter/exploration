@@ -1,3 +1,4 @@
+#![allow(unused)]
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -38,18 +39,8 @@ pub enum LodLevel {
 
 /// Request a chunk of a noise parameter
 #[derive(Event)]
-pub struct RequestChunk<T: crate::terrain::TerrainNoiseParams> {
+pub struct RequestArea {
     pub position: IVec2,
-    _phantom: std::marker::PhantomData<T>,
-}
-
-impl<T: crate::terrain::TerrainNoiseParams> RequestChunk<T> {
-    pub fn new(position: IVec2) -> Self {
-        Self {
-            position,
-            _phantom: std::marker::PhantomData,
-        }
-    }
 }
 
 // possibly generic???

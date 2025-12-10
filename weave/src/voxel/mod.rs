@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use noiz::prelude::*;
 
 mod collider;
 
