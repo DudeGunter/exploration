@@ -6183,6 +6183,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "portal"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "log",
+ "tracing",
+]
+
+[[package]]
 name = "potential_utf"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

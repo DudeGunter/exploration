@@ -5,6 +5,7 @@ members = [
     "console",
     "explore",
     "networking",
+    "portal",
     "voxel_terrain",
     "weave",
 ]
@@ -16,7 +17,6 @@ leafwing-input-manager = "0.19"
 noiz = "0.3"
 ron = "0.12"
 serde = "1.0"
-bytemuck = {version = "1.24", features = ["derive"]}
 
 [workspace.dependencies.avian3d]
 version = "0.4"
@@ -32,6 +32,10 @@ features = [
     "multi_threaded",
     "bevy_remote",
 ]
+
+[workspace.dependencies.bytemuck]
+version = "1.24"
+features = ["derive"]
 
 [workspace.dependencies.character_controller]
 path = "character_controller"
