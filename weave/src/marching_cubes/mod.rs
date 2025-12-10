@@ -10,6 +10,7 @@ impl Plugin for MarchingCubesPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(TerrainNoisePlugin(NoiseParams::default()));
         app.add_systems(Startup, request_area);
+        app.add_observer(mesh::recieve_mesh);
     }
 }
 
@@ -49,5 +50,5 @@ impl TerrainNoiseParams for NoiseParams {
 }
 
 pub fn request_area(mut commands: Commands) {
-    commands.trigger(RequestGenerate::<NoiseParams>::new(IVec2::ZERO))
+    commands.trigger(RequestNoise::<NoiseParams>::new(IVec2::ZERO))
 }

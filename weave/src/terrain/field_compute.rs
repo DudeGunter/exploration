@@ -147,8 +147,7 @@ impl Plugin for NoiseFieldComputePlugin {
         embedded_asset!(app, "noise_field.wgsl");
 
         app.add_plugins(ExtractResourcePlugin::<NoiseRequests>::default())
-            .init_resource::<NoiseRequests>()
-            .add_observer(on_complete);
+            .init_resource::<NoiseRequests>();
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
         render_app.add_systems(RenderStartup, init_pipeline);
@@ -212,11 +211,4 @@ fn init_pipeline(
         layout,
         pipeline_id,
     });
-}
-
-fn on_complete(trigger: On<ReadbackComplete>, mut requests: ResMut<NoiseRequests>) {
-    if let Some((_coord, _params)) = requests.0.remove(&trigger.entity) {
-        let data: Vec<f32> = trigger.to_shader_type();
-        info!("Noise ready: {} values", data.len());
-    }
 }

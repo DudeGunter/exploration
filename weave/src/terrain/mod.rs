@@ -10,6 +10,7 @@ impl<T: TerrainNoiseParams + Clone> Plugin for TerrainNoisePlugin<T> {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.0.clone());
         app.add_observer(queue_chunk::<T>);
+        app.add_observer(on_complete::<T>);
     }
 }
 
@@ -21,12 +22,12 @@ pub trait TerrainNoiseParams: Resource {
 }
 
 #[derive(Event)]
-pub struct RequestGenerate<T: TerrainNoiseParams> {
+pub struct RequestNoise<T: TerrainNoiseParams> {
     position: IVec3,
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: TerrainNoiseParams + Clone> RequestGenerate<T> {
+impl<T: TerrainNoiseParams + Clone> RequestNoise<T> {
     pub fn new(position: IVec2) -> Self {
         Self {
             position: position.xyx().with_z(0),
@@ -43,8 +44,15 @@ impl<T: TerrainNoiseParams + Clone> RequestGenerate<T> {
     }
 }
 
-fn queue_chunk<C: crate::terrain::TerrainNoiseParams>(
-    trigger: On<RequestGenerate<C>>,
+#[derive(Event)]
+pub struct RequestComplete<T: TerrainNoiseParams> {
+    pub position: IVec3,
+    pub data: Vec<f32>,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+fn queue_chunk<C: TerrainNoiseParams>(
+    trigger: On<RequestNoise<C>>,
     mut commands: Commands,
     mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
     mut requests: ResMut<NoiseRequests>,
@@ -72,4 +80,21 @@ fn queue_chunk<C: crate::terrain::TerrainNoiseParams>(
     let entity = commands.spawn((Readback::buffer(buffer_handle),)).id();
 
     requests.0.insert(entity, (chunk_coord, noise_params));
+}
+
+// Terrain Noise Params could collide here!!!
+fn on_complete<C: TerrainNoiseParams>(
+    trigger: On<ReadbackComplete>,
+    mut commands: Commands,
+    mut requests: ResMut<NoiseRequests>,
+) {
+    if let Some((position, _params)) = requests.0.remove(&trigger.entity) {
+        let data: Vec<f32> = trigger.to_shader_type();
+        commands.entity(trigger.entity).despawn();
+        commands.trigger(RequestComplete::<C> {
+            position,
+            data,
+            _phantom: std::marker::PhantomData,
+        });
+    }
 }

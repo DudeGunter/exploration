@@ -1,22 +1,22 @@
 use super::tables::*;
-use crate::terrain::field_compute::*;
+use crate::terrain::{RequestComplete, field_compute::*};
 use bevy::{mesh::Indices, platform::collections::HashMap};
 
-/// Constructs the mesh given the data from the work done in noise_field
-#[derive(Resource)]
-pub struct TerrainMeshes {
-    pub meshes: HashMap<IVec2, Handle<Mesh>>,
-}
-
-pub fn recieve(
-    trigger: On<ReadbackComplete>,
-    asset_server: Res<AssetServer>,
-    mut meshes: ResMut<TerrainMeshes>,
+pub fn recieve_mesh(
+    trigger: On<RequestComplete<super::NoiseParams>>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    info!(
-        "Received data from noise_field from entity {}",
-        trigger.entity
-    );
+    info!("Received terrain noise data");
+    let _position = trigger.event().position;
+    let mesh_handle = meshes.add(construct_mesh(trigger.event().data.to_owned()));
+
+    commands.spawn((
+        Name::new("Terrain Mesh"),
+        Mesh3d(mesh_handle),
+        MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::srgb(1.0, 1.0, 1.0)))),
+    ));
 }
 
 const FIELD_SIZE: u32 = 17;
@@ -25,8 +25,7 @@ const ISOLEVEL: f32 = 0.0;
 pub fn construct_mesh(data: Vec<f32>) -> Mesh {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
-    let mut edge_vertices: std::collections::HashMap<(u32, u32, u32, u8), u32> =
-        std::collections::HashMap::new();
+    let mut edge_vertices: HashMap<(u32, u32, u32, u8), u32> = HashMap::new();
 
     let get_density = |x: u32, y: u32, z: u32| -> f32 {
         if x >= FIELD_SIZE || y >= FIELD_SIZE || z >= FIELD_SIZE {
