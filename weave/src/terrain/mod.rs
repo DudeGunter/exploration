@@ -1,7 +1,8 @@
 use bevy::prelude::*;
+use experimental::*;
 use field_compute::*;
 
-//mod experimental;
+pub mod experimental;
 pub mod field_compute;
 
 /// Handles the compute shader noise
@@ -11,7 +12,7 @@ impl<T: TerrainNoiseParams + Clone> Plugin for TerrainNoisePlugin<T> {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.0.clone());
         app.add_observer(queue_chunk::<T>);
-        app.add_observer(on_complete::<T>);
+        app.add_systems(Update, on_complete::<T>);
     }
 }
 
@@ -54,15 +55,12 @@ pub struct RequestComplete<T: TerrainNoiseParams> {
 
 fn queue_chunk<C: TerrainNoiseParams>(
     trigger: On<RequestNoise<C>>,
-    mut commands: Commands,
-    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
-    mut requests: ResMut<NoiseRequests>,
     params: Res<C>,
+    mut compute_worker: ResMut<AppComputeWorker<FieldComputeWorker>>,
 ) {
     let coord = trigger.event().position;
-    let chunk_coord = IVec3::new(coord.x, coord.y, 0);
 
-    let noise_params = NoiseParams {
+    let noise_params = experimental::NoiseParams {
         chunk_x: coord.x,
         chunk_y: coord.y,
         chunk_z: coord.z,
@@ -72,29 +70,25 @@ fn queue_chunk<C: TerrainNoiseParams>(
         octaves: params.octaves(),
         _padding: 0,
     };
+    let stuff: Vec<f32> = vec![0f32; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize];
 
-    let mut buffer =
-        ShaderStorageBuffer::from(vec![0f32; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize]);
-    buffer.buffer_description.usage |= BufferUsages::COPY_SRC;
-    let buffer_handle = buffers.add(buffer);
-
-    let entity = commands.spawn((Readback::buffer(buffer_handle),)).id();
-
-    requests.0.insert(entity, (chunk_coord, noise_params));
+    compute_worker.write("params", &noise_params);
+    compute_worker.write_slice("noise_field", &stuff);
+    compute_worker.execute();
 }
 
 // Terrain Noise Params could collide here!!!
 fn on_complete<C: TerrainNoiseParams>(
-    trigger: On<ReadbackComplete>,
     mut commands: Commands,
-    mut requests: ResMut<NoiseRequests>,
+    compute_worker: Res<AppComputeWorker<FieldComputeWorker>>,
 ) {
-    if let Some((position, _params)) = requests.0.remove(&trigger.entity) {
-        let data: Vec<f32> = trigger.to_shader_type();
-        commands.entity(trigger.entity).despawn();
+    if compute_worker.ready() {
+        let params: experimental::NoiseParams = compute_worker.read("params");
+        let noise_field: Vec<f32> = compute_worker.read_vec("noise_field");
+
         commands.trigger(RequestComplete::<C> {
-            position,
-            data,
+            position: IVec3::new(params.chunk_x, params.chunk_y, params.chunk_z),
+            data: noise_field,
             _phantom: std::marker::PhantomData,
         });
     }

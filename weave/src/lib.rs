@@ -19,7 +19,8 @@ impl Plugin for WeavePlugin {
         app.add_plugins((
             marching_cubes::MarchingCubesPlugin,
             voxel::VoxelPlugin,
-            terrain::field_compute::NoiseFieldComputePlugin,
+            //terrain::field_compute::NoiseFieldComputePlugin,
+            terrain::experimental::FieldComputePlugin,
         ));
     }
 }
