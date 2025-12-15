@@ -17,6 +17,7 @@ leafwing-input-manager = "0.19"
 noiz = "0.3"
 ron = "0.12"
 serde = "1.0"
+portal = { path = "portal" }
 
 [workspace.dependencies.avian3d]
 version = "0.4"

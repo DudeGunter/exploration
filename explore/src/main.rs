@@ -1,3 +1,4 @@
+#![allow(unused)]
 use avian3d::prelude::*;
 use bevy::{
     camera::Exposure, core_pipeline::tonemapping::Tonemapping, pbr::Atmosphere, prelude::*,
@@ -5,6 +6,7 @@ use bevy::{
 use bevy_flycam::prelude::*;
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use networking::prelude::*;
+use portal::PortalPlugin;
 use voxel_terrain::prelude::*;
 use weave::WeavePlugin;
 // Everything and anything in bevy diddy blud
@@ -23,6 +25,7 @@ fn main() -> AppExit {
         //NetworkingPlugin,
         //WeavePlugin,
         console::ConsolePlugin,
+        PortalPlugin,
     ));
     app.add_systems(Startup, (setup, spawn_example_scene));
     app.run()
@@ -52,7 +55,7 @@ fn setup(mut commands: Commands) {
         },
         Exposure::SUNLIGHT,
         Tonemapping::AcesFitted,
-        Transform::default().looking_at(Vec3::new(0.0, -8.0, 0.0), Vec3::Y),
+        Transform::default().looking_at(Vec3::new(0.0, 0.0, 1.0), Vec3::Y),
     ));
     // Directional light
     commands.spawn((
