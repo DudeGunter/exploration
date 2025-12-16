@@ -3,6 +3,20 @@ use field_compute::*;
 
 pub mod field_compute;
 
+// It should be noted...
+// Previously, we didn't use bevy_app_compute or smth,
+// it was a more low level integration with the bevy render graph
+// I could never get that working properly because of readback issues,
+// so im using bevy_app_compute now.
+// the issue is you can't run in parallel or it would be more ugly requireing multiple worker resources of
+// an unknown amount, making it a queue for now.
+//
+// It should also be noted...
+// I would have avoided generics as a whole if you could query off data + components and not just components
+// You could just do components than filter for the appropriate data but I also felt as though these noise funcs
+// could be applied to potentially more than just terrain.
+// Also... it seems that component + data querys are coming, althouth the syntax is a bit strange
+
 /// Handles the compute shader noise
 pub struct TerrainNoisePlugin<T: TerrainNoiseParams + Clone>(pub T);
 
@@ -27,15 +41,15 @@ pub struct RequestNoise<T: TerrainNoiseParams> {
     _phantom: std::marker::PhantomData<T>,
 }
 
+#[allow(unused)]
 impl<T: TerrainNoiseParams + Clone> RequestNoise<T> {
     pub fn new(position: IVec2) -> Self {
         Self {
-            position: position.xyx().with_z(0),
+            position: position.xxy().with_y(0),
             _phantom: std::marker::PhantomData,
         }
     }
 
-    #[allow(unused)]
     pub fn new_3d(position: IVec3) -> Self {
         Self {
             position,
@@ -81,7 +95,6 @@ fn on_complete<C: TerrainNoiseParams>(
     compute_worker: Res<AppComputeWorker<FieldComputeWorker>>,
 ) {
     if compute_worker.ready() {
-        info!("Its ready");
         let params = compute_worker.read::<NoiseParams>("params");
         let noise_field: Vec<f32> = compute_worker.read_vec("noise_field");
 
@@ -90,6 +103,5 @@ fn on_complete<C: TerrainNoiseParams>(
             data: noise_field,
             _phantom: std::marker::PhantomData,
         });
-        info!("Success");
     }
 }

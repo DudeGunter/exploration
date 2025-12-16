@@ -2,7 +2,8 @@ pub use bevy::{asset::embedded_asset, prelude::*};
 pub use bevy_app_compute::prelude::*;
 use bytemuck::{Pod, Zeroable};
 
-pub const FIELD_SIZE: u32 = 17;
+// Make sure you update the appropriate constants in the wgsl
+pub const FIELD_SIZE: u32 = 32;
 pub const WORKGROUP_SIZE: u32 = 4;
 
 pub struct FieldComputePlugin;
@@ -36,7 +37,7 @@ impl ComputeWorker for FieldComputeWorker {
             .add_empty_staging(
                 "noise_field",
                 4 * (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as u64,
-            ) // 4 is the size of a float
+            ) // 4 is the size of a float and FIELD_SIZE^3 is the number of elements in the vec n * s = sn
             .add_pass::<NoiseFieldShader>(
                 [WORKGROUP_SIZE, WORKGROUP_SIZE, WORKGROUP_SIZE],
                 &["params", "noise_field"],

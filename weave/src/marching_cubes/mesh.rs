@@ -34,8 +34,9 @@ pub fn recieve_mesh(
         MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::srgb(0.6, 1.0, 0.4)))),
     ));
 }
-const FIELD_SIZE: u32 = 17;
-const ISOLEVEL: f32 = 0.0;
+
+// Interval: (-1.0, 1.0) maybe... not to good at math ngl
+const ISOLEVEL: f32 = 0.25;
 
 pub fn construct_mesh(data: Vec<f32>) -> Mesh {
     let mut vertices = Vec::new();
@@ -147,4 +148,5 @@ pub fn construct_mesh(data: Vec<f32>) -> Mesh {
     )
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
     .with_inserted_indices(Indices::U32(indices))
+    .with_computed_area_weighted_normals()
 }

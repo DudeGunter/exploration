@@ -26,7 +26,7 @@ pub struct NoiseParams {
 impl Default for NoiseParams {
     fn default() -> Self {
         Self {
-            scale: 1.0,
+            scale: 0.1,
             frequency: 1.0,
             amplitude: 1.0,
             octaves: 1,
@@ -50,5 +50,11 @@ impl TerrainNoiseParams for NoiseParams {
 }
 
 pub fn request_area(mut commands: Commands) {
-    commands.trigger(RequestNoise::<NoiseParams>::new(IVec2::ZERO))
+    for x in -5..5 {
+        for y in -5..5 {
+            for z in -5..5 {
+                commands.trigger(RequestNoise::<NoiseParams>::new_3d(IVec3::new(x, y, z)));
+            }
+        }
+    }
 }

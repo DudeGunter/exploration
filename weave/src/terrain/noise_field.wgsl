@@ -18,7 +18,7 @@ var<storage, read_write> params: NoiseParams;
 @group(0) @binding(1)
 var<storage, read_write> noise_field: array<f32>;
 
-const FIELD_SIZE: u32 = 17u; // CHUNK_SIZE + 1
+const FIELD_SIZE: u32 = 32u; // CHUNK_SIZE + 1
 
 // Simple hash function for pseudo-random values
 fn hash(v: vec3<f32>) -> f32 {
