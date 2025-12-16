@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use field_compute::*;
 
+pub mod experimental;
 pub mod field_compute;
 
 // It should be noted...

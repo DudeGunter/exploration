@@ -17,10 +17,10 @@ impl Plugin for WeavePlugin {
         app.add_systems(Startup, hello);
 
         app.add_plugins((
-            marching_cubes::MarchingCubesPlugin,
+            //marching_cubes::MarchingCubesPlugin,
             voxel::VoxelPlugin,
-            //terrain::field_compute::NoiseFieldComputePlugin,
-            terrain::field_compute::FieldComputePlugin,
+            //terrain::field_compute::FieldComputePlugin,
+            terrain::experimental::plugin,
         ));
     }
 }
