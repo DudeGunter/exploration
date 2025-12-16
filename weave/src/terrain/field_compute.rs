@@ -36,8 +36,11 @@ impl ComputeWorker for FieldComputeWorker {
             .add_empty_staging(
                 "noise_field",
                 4 * (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as u64,
+            ) // 4 is the size of a float
+            .add_pass::<NoiseFieldShader>(
+                [WORKGROUP_SIZE, WORKGROUP_SIZE, WORKGROUP_SIZE],
+                &["params", "noise_field"],
             )
-            .add_pass::<NoiseFieldShader>([4, 4, 4], &["params", "noise_field"])
             .one_shot()
             .build();
 
