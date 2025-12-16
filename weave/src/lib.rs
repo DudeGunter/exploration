@@ -5,8 +5,6 @@ use bevy::prelude::*;
 mod area;
 mod marching_cubes;
 mod terrain;
-mod voxel;
-
 /// Adds all weave implementations
 /// This includes voxel and marching and their respective terrains
 
@@ -14,16 +12,9 @@ pub struct WeavePlugin;
 
 impl Plugin for WeavePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, hello);
-
         app.add_plugins((
             marching_cubes::MarchingCubesPlugin,
-            voxel::VoxelPlugin,
             terrain::field_compute::plugin,
         ));
     }
-}
-
-fn hello() {
-    info!("Hello from weave! we up btw !")
 }

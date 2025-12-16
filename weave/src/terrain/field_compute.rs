@@ -6,6 +6,7 @@
 // IT WORKS BIG NOTE:
 // For the longest time I couldn't figure out why I was just getting zeros back
 // Turns out that you must wait a bit (6-7 frames) for the shader to be ready.
+// (this wasn't noted in the docs)
 //#![allow(unused)] // for now... No longer!
 pub use bevy::{
     asset::embedded_asset,

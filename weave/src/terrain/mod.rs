@@ -27,61 +27,58 @@ pub mod field_compute;
 // make my own bevy_compute_workers with better support
 
 /// Handles the compute shader noise
-pub struct TerrainNoisePlugin<T: TerrainNoiseParams + Clone>(pub T);
+pub struct TerrainNoisePlugin;
 
-impl<T: TerrainNoiseParams + Clone> Plugin for TerrainNoisePlugin<T> {
+impl Plugin for TerrainNoisePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(self.0.clone());
-        app.add_observer(handle_requests::<T>);
+        app.insert_resource(TerrainNoiseParams::default());
+        app.add_systems(PreUpdate, clear_queue);
+        app.add_observer(handle_requests);
     }
 }
 
-pub trait TerrainNoiseParams: Resource {
-    fn scale(&self) -> f32;
-    fn frequency(&self) -> f32;
-    fn amplitude(&self) -> f32;
-    fn octaves(&self) -> u32;
+#[derive(Resource)]
+pub struct TerrainNoiseParams {
+    pub scale: f32,
+    pub frequency: f32,
+    pub amplitude: f32,
+    pub octaves: u32,
 }
 
-#[derive(Event)]
-pub struct RequestNoise<T: TerrainNoiseParams> {
-    position: IVec3,
-    _phantom: std::marker::PhantomData<T>,
-}
-
-#[allow(unused)]
-impl<T: TerrainNoiseParams + Clone> RequestNoise<T> {
-    pub fn new(position: IVec2) -> Self {
+impl Default for TerrainNoiseParams {
+    fn default() -> Self {
         Self {
-            position: position.xxy().with_y(0),
-            _phantom: std::marker::PhantomData,
-        }
-    }
-
-    pub fn new_3d(position: IVec3) -> Self {
-        Self {
-            position,
-            _phantom: std::marker::PhantomData,
+            scale: 0.1,
+            frequency: 1.0,
+            amplitude: 1.0,
+            octaves: 1,
         }
     }
 }
 
 #[derive(Event)]
-pub struct RequestComplete<T: TerrainNoiseParams> {
+pub struct RequestNoise {
+    pub position: IVec3,
+}
+
+#[derive(Event)]
+pub struct RequestComplete {
     pub position: IVec3,
     pub data: Vec<f32>,
-    _phantom: std::marker::PhantomData<T>,
+}
+
+pub fn clear_queue(mut queue: ResMut<NoiseFieldQueue>) {
+    queue.queue.clear();
 }
 
 // This could be broken up
-pub fn handle_requests<C: TerrainNoiseParams>(
-    trigger: On<RequestNoise<C>>,
+pub fn handle_requests(
+    trigger: On<RequestNoise>,
     mut commands: Commands,
-    params: Res<C>,
+    params: Res<TerrainNoiseParams>,
     mut queue: ResMut<NoiseFieldQueue>,
     mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
 ) {
-    info!("Generating noise field");
     let buffer: Vec<f32> = vec![0.0; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize];
     let mut buffer = ShaderStorageBuffer::from(buffer);
     buffer.buffer_description.usage =
@@ -93,19 +90,16 @@ pub fn handle_requests<C: TerrainNoiseParams>(
         chunk_x: coord.x,
         chunk_y: coord.y,
         chunk_z: coord.z,
-        scale: params.scale(),
-        frequency: params.frequency(),
-        amplitude: params.amplitude(),
-        octaves: params.octaves(),
+        scale: params.scale,
+        frequency: params.frequency,
+        amplitude: params.amplitude,
+        octaves: params.octaves,
         _padding: 0,
     };
     commands
         .spawn((Readback::buffer(buffer.clone()), Params(noise_params)))
         .observe(
-            |trigger: On<ReadbackComplete>,
-             mut commands: Commands,
-             mut queue: ResMut<NoiseFieldQueue>,
-             query: Query<&Params>| {
+            |trigger: On<ReadbackComplete>, mut commands: Commands, query: Query<&Params>| {
                 let data: Vec<f32> = trigger.to_shader_type();
                 // Unnecessary if you just wait a bit
                 if data.iter().sum::<f32>() == 0.0 {
@@ -113,17 +107,10 @@ pub fn handle_requests<C: TerrainNoiseParams>(
                     warn!("This is likely caused by the shader not being compiled yet or smth");
                 }
                 let params = query.get(trigger.entity).unwrap().0;
-                commands.trigger(RequestComplete::<C> {
+                commands.trigger(RequestComplete {
                     position: IVec3::new(params.chunk_x, params.chunk_y, params.chunk_z),
                     data,
-                    _phantom: std::marker::PhantomData,
                 });
-
-                // TODO: this might not be removing fast enough and therefore is calling twice
-                // sometimes causing excessive noise generation without purpose (although I might be wrong)
-                queue
-                    .queue
-                    .retain(|(queued_params, _)| *queued_params != params);
 
                 commands.entity(trigger.entity).despawn();
             },

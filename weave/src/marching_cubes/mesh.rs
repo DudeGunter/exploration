@@ -3,7 +3,7 @@ use crate::terrain::{RequestComplete, field_compute::*};
 use bevy::{mesh::Indices, platform::collections::HashMap};
 
 pub fn recieve_mesh(
-    trigger: On<RequestComplete<super::NoiseParams>>,
+    trigger: On<RequestComplete>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
