@@ -9,7 +9,7 @@ pub struct MarchingCubesPlugin;
 impl Plugin for MarchingCubesPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(TerrainNoisePlugin(NoiseParams::default()));
-        app.add_systems(Startup, request_area);
+        app.add_systems(Update, request_area);
         app.add_observer(mesh::recieve_mesh);
     }
 }
@@ -49,11 +49,13 @@ impl TerrainNoiseParams for NoiseParams {
     }
 }
 
-pub fn request_area(mut commands: Commands) {
-    for x in -5..5 {
-        for y in -5..5 {
-            for z in -5..5 {
-                commands.trigger(RequestNoise::<NoiseParams>::new_3d(IVec3::new(x, y, z)));
+pub fn request_area(mut commands: Commands, input: Res<ButtonInput<KeyCode>>) {
+    if input.just_pressed(KeyCode::KeyG) {
+        for x in -3..3 {
+            for y in -3..3 {
+                for z in -3..3 {
+                    commands.trigger(RequestNoise::<NoiseParams>::new_3d(IVec3::new(x, y, z)));
+                }
             }
         }
     }

@@ -23,8 +23,7 @@ pub struct TerrainNoisePlugin<T: TerrainNoiseParams + Clone>(pub T);
 impl<T: TerrainNoiseParams + Clone> Plugin for TerrainNoisePlugin<T> {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.0.clone());
-        app.add_observer(queue_chunk::<T>);
-        app.add_systems(Update, on_complete::<T>);
+        app.add_observer(handle_requests::<T>);
     }
 }
 
@@ -65,9 +64,10 @@ pub struct RequestComplete<T: TerrainNoiseParams> {
     _phantom: std::marker::PhantomData<T>,
 }
 
-pub fn testing<C: TerrainNoiseParams>(
+pub fn handle_requests<C: TerrainNoiseParams>(
     trigger: On<RequestNoise<C>>,
     mut commands: Commands,
+    params: Res<C>,
     mut queue: ResMut<NoiseFieldQueue>,
     mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
 ) {
@@ -77,37 +77,6 @@ pub fn testing<C: TerrainNoiseParams>(
     buffer.buffer_description.usage =
         BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC;
     let buffer = buffers.add(buffer);
-    commands
-        .spawn((
-            Readback::buffer(buffer.clone()),
-            Params(NoiseParams::default()),
-        ))
-        .observe(
-            |trigger: On<ReadbackComplete>,
-             mut commands: Commands,
-             mut queue: ResMut<NoiseFieldQueue>,
-             query: Query<&Params>| {
-                let data: Vec<f32> = trigger.to_shader_type();
-                // Unnecessary if you just wait a bit
-                if data.iter().sum::<f32>() == 0.0 {
-                    return;
-                }
-                queue
-                    .queue
-                    .retain(|(params, _)| *params != query.single().unwrap().0);
-
-                commands.entity(trigger.entity).despawn();
-            },
-        );
-
-    queue.queue.push((NoiseParams::default(), buffer));
-}
-
-fn queue_chunk<C: TerrainNoiseParams>(
-    trigger: On<RequestNoise<C>>,
-    params: Res<C>,
-    mut compute_worker: ResMut<AppComputeWorker<FieldComputeWorker>>,
-) {
     let coord = trigger.event().position;
 
     let noise_params = NoiseParams {
@@ -120,26 +89,34 @@ fn queue_chunk<C: TerrainNoiseParams>(
         octaves: params.octaves(),
         _padding: 0,
     };
-    let stuff: Vec<f32> = vec![0f32; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize];
+    commands
+        .spawn((Readback::buffer(buffer.clone()), Params(noise_params)))
+        .observe(
+            |trigger: On<ReadbackComplete>,
+             mut commands: Commands,
+             mut queue: ResMut<NoiseFieldQueue>,
+             query: Query<&Params>| {
+                let data: Vec<f32> = trigger.to_shader_type();
+                // Unnecessary if you just wait a bit
+                if data.iter().sum::<f32>() == 0.0 {
+                    warn!("Likely didn't generate properly, all the noise data is zero!");
+                    warn!("This is likely caused by the shader not being compiled yet or smth");
+                }
+                let params = query.get(trigger.entity).unwrap().0;
+                commands.trigger(RequestComplete::<C> {
+                    position: IVec3::new(params.chunk_x, params.chunk_y, params.chunk_z),
+                    data,
+                    _phantom: std::marker::PhantomData,
+                });
 
-    compute_worker.write("params", &noise_params);
-    compute_worker.write_slice("noise_field", &stuff);
-    compute_worker.execute();
-}
+                // Handle removing the observer etc
+                queue
+                    .queue
+                    .retain(|(queued_params, _)| *queued_params != params);
 
-// Terrain Noise Params could collide here!!!
-fn on_complete<C: TerrainNoiseParams>(
-    mut commands: Commands,
-    compute_worker: Res<AppComputeWorker<FieldComputeWorker>>,
-) {
-    if compute_worker.ready() {
-        let params = compute_worker.read::<NoiseParams>("params");
-        let noise_field: Vec<f32> = compute_worker.read_vec("noise_field");
+                commands.entity(trigger.entity).despawn();
+            },
+        );
 
-        commands.trigger(RequestComplete::<C> {
-            position: IVec3::new(params.chunk_x, params.chunk_y, params.chunk_z),
-            data: noise_field,
-            _phantom: std::marker::PhantomData,
-        });
-    }
+    queue.queue.push((noise_params, buffer));
 }

@@ -9,7 +9,7 @@ pub fn recieve_mesh(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     info!("Received terrain noise data");
-    let _position = trigger.event().position;
+    let position = trigger.event().position;
 
     let data = &trigger.event().data;
 
@@ -27,10 +27,12 @@ pub fn recieve_mesh(
     );
 
     let mesh_handle = meshes.add(construct_mesh(trigger.event().data.to_owned()));
-
+    let transform =
+        Transform::from_translation(position.as_vec3() * Vec3::splat((FIELD_SIZE - 1) as f32));
     commands.spawn((
         Name::new("Terrain Mesh"),
         Mesh3d(mesh_handle),
+        transform,
         MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::srgb(0.6, 1.0, 0.4)))),
     ));
 }

@@ -93,10 +93,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     // Convert chunk coordinate and local position to world space
+    let size = f32(FIELD_SIZE - 1);
     let world_pos = vec3<f32>(
-        f32(params.chunk_x) * 16.0 + f32(global_id.x),
-        f32(params.chunk_y) * 16.0 + f32(global_id.y),
-        f32(params.chunk_z) * 16.0 + f32(global_id.z)
+        f32(params.chunk_x) * size + f32(global_id.x),
+        f32(params.chunk_y) * size + f32(global_id.y),
+        f32(params.chunk_z) * size + f32(global_id.z)
     ) * params.scale;
 
     // Generate noise value using FBM (returns [0, 1])

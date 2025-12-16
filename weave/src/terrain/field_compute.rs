@@ -31,7 +31,6 @@ pub fn plugin(app: &mut App) {
 
     app.add_plugins(ExtractResourcePlugin::<NoiseFieldQueue>::default());
     app.insert_resource(NoiseFieldQueue { queue: Vec::new() });
-    app.add_systems(Update, testing);
 
     let render_app = app.get_sub_app_mut(RenderApp).unwrap();
     render_app.add_systems(
@@ -43,11 +42,11 @@ pub fn plugin(app: &mut App) {
 #[derive(Component)]
 pub struct Params(pub NoiseParams);
 
-pub fn testing(
+pub fn _testing(
     mut commands: Commands,
     mut queue: ResMut<NoiseFieldQueue>,
     mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
-    mut input: Res<ButtonInput<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
 ) {
     if input.just_pressed(KeyCode::KeyG) {
         info!("Generating noise field");
