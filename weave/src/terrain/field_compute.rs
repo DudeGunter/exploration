@@ -1,22 +1,49 @@
-pub use bevy::{
-    asset::embedded_asset,
-    prelude::*,
-    render::{
-        RenderApp, RenderStartup,
-        extract_resource::{ExtractResource, ExtractResourcePlugin},
-        gpu_readback::{Readback, ReadbackComplete},
-        render_graph::{self, RenderGraph, RenderLabel},
-        render_resource::*,
-        renderer::{RenderContext, RenderDevice},
-        storage::ShaderStorageBuffer,
-    },
-};
+pub use bevy::{asset::embedded_asset, prelude::*};
+pub use bevy_app_compute::prelude::*;
 use bytemuck::{Pod, Zeroable};
-use std::borrow::Cow;
-use std::collections::HashMap;
 
 pub const FIELD_SIZE: u32 = 17;
 pub const WORKGROUP_SIZE: u32 = 4;
+
+pub struct FieldComputePlugin;
+
+impl Plugin for FieldComputePlugin {
+    fn build(&self, app: &mut App) {
+        embedded_asset!(app, "noise_field.wgsl");
+        app.add_plugins((
+            AppComputePlugin,
+            AppComputeWorkerPlugin::<FieldComputeWorker>::default(),
+        ));
+    }
+}
+
+#[derive(TypePath)]
+pub struct NoiseFieldShader;
+
+impl ComputeShader for NoiseFieldShader {
+    fn shader() -> ShaderRef {
+        "embedded://weave/terrain/noise_field.wgsl".into()
+    }
+}
+
+#[derive(Resource)]
+pub struct FieldComputeWorker;
+
+impl ComputeWorker for FieldComputeWorker {
+    fn build(world: &mut World) -> AppComputeWorker<Self> {
+        let worker = AppComputeWorkerBuilder::new(world)
+            .add_empty_staging("params", std::mem::size_of::<NoiseParams>() as u64)
+            .add_empty_staging(
+                "noise_field",
+                4 * (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as u64,
+            )
+            .add_pass::<NoiseFieldShader>([4, 4, 4], &["params", "noise_field"])
+            .one_shot()
+            .build();
+
+        worker
+    }
+}
 
 #[repr(C)]
 #[derive(ShaderType, Clone, Copy, Pod, Zeroable)]
@@ -44,171 +71,4 @@ impl Default for NoiseParams {
             _padding: 0,
         }
     }
-}
-
-#[derive(Resource, Default, Clone, ExtractResource)]
-pub struct NoiseRequests(pub HashMap<Entity, (IVec3, NoiseParams)>);
-
-#[derive(Resource)]
-struct NoiseComputePipeline {
-    layout: BindGroupLayout,
-    pipeline_id: CachedComputePipelineId,
-}
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
-struct NoiseComputeLabel;
-
-struct NoiseComputeNode(bool);
-
-impl Default for NoiseComputeNode {
-    fn default() -> Self {
-        Self(false)
-    }
-}
-
-impl render_graph::Node for NoiseComputeNode {
-    fn update(&mut self, world: &mut World) {
-        let pipeline = world.resource::<NoiseComputePipeline>();
-        let cache = world.resource::<PipelineCache>();
-        self.0 = matches!(
-            cache.get_compute_pipeline_state(pipeline.pipeline_id),
-            CachedPipelineState::Ok(_)
-        );
-    }
-
-    fn run(
-        &self,
-        _graph: &mut render_graph::RenderGraphContext,
-        render_context: &mut RenderContext,
-        world: &World,
-    ) -> Result<(), render_graph::NodeRunError> {
-        if !self.0 {
-            return Ok(());
-        }
-
-        let requests = world.resource::<NoiseRequests>();
-        let pipeline = world.resource::<NoiseComputePipeline>();
-        let cache = world.resource::<PipelineCache>();
-        let device = world.resource::<RenderDevice>();
-
-        let Some(pipeline) = cache.get_compute_pipeline(pipeline.pipeline_id) else {
-            return Ok(());
-        };
-
-        for (_entity, (_chunk_coord, params)) in &requests.0 {
-            let params_buf = device.create_buffer_with_data(&BufferInitDescriptor {
-                label: Some("noise_params"),
-                contents: bytemuck::cast_slice(&[*params]),
-                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            });
-
-            let storage_buf = device.create_buffer(&BufferDescriptor {
-                label: Some("noise_storage"),
-                size: (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE * 4) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-                mapped_at_creation: false,
-            });
-
-            let bind_group = device.create_bind_group(
-                Some("noise_bind_group"),
-                &world.resource::<NoiseComputePipeline>().layout,
-                &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: params_buf.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: storage_buf.as_entire_binding(),
-                    },
-                ],
-            );
-
-            let mut pass = render_context
-                .command_encoder()
-                .begin_compute_pass(&ComputePassDescriptor::default());
-            pass.set_pipeline(pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(
-                (FIELD_SIZE + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE,
-                (FIELD_SIZE + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE,
-                (FIELD_SIZE + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE,
-            );
-        }
-
-        Ok(())
-    }
-}
-
-pub struct NoiseFieldComputePlugin;
-
-impl Plugin for NoiseFieldComputePlugin {
-    fn build(&self, app: &mut App) {
-        embedded_asset!(app, "noise_field.wgsl");
-
-        app.add_plugins(ExtractResourcePlugin::<NoiseRequests>::default())
-            .init_resource::<NoiseRequests>();
-
-        let render_app = app.get_sub_app_mut(RenderApp).unwrap();
-        render_app.add_systems(RenderStartup, init_pipeline);
-
-        let mut graph = render_app.world_mut().resource_mut::<RenderGraph>();
-        graph.add_node(NoiseComputeLabel, NoiseComputeNode::default());
-    }
-}
-
-fn init_pipeline(
-    mut commands: Commands,
-    device: Res<RenderDevice>,
-    asset_server: Res<AssetServer>,
-    cache: Res<PipelineCache>,
-) {
-    let layout = device.create_bind_group_layout(
-        "noise_layout",
-        &[
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(
-                        std::num::NonZeroU64::new(std::mem::size_of::<NoiseParams>() as u64)
-                            .unwrap(),
-                    ),
-                },
-                count: None,
-            },
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(
-                        std::num::NonZeroU64::new(
-                            (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE * 4) as u64,
-                        )
-                        .unwrap(),
-                    ),
-                },
-                count: None,
-            },
-        ],
-    );
-
-    let pipeline_id = cache.queue_compute_pipeline(ComputePipelineDescriptor {
-        label: Some("noise_pipeline".into()),
-        layout: vec![layout.clone()],
-        push_constant_ranges: vec![],
-        shader: asset_server.load("embedded://weave/terrain/noise_field.wgsl"),
-        shader_defs: vec![],
-        entry_point: Some(Cow::from("main")),
-        ..default()
-    });
-
-    commands.insert_resource(NoiseComputePipeline {
-        layout,
-        pipeline_id,
-    });
 }

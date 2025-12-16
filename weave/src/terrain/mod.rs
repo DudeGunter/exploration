@@ -1,8 +1,6 @@
 use bevy::prelude::*;
-use experimental::*;
 use field_compute::*;
 
-pub mod experimental;
 pub mod field_compute;
 
 /// Handles the compute shader noise
@@ -60,7 +58,7 @@ fn queue_chunk<C: TerrainNoiseParams>(
 ) {
     let coord = trigger.event().position;
 
-    let noise_params = experimental::NoiseParams {
+    let noise_params = NoiseParams {
         chunk_x: coord.x,
         chunk_y: coord.y,
         chunk_z: coord.z,
@@ -83,7 +81,8 @@ fn on_complete<C: TerrainNoiseParams>(
     compute_worker: Res<AppComputeWorker<FieldComputeWorker>>,
 ) {
     if compute_worker.ready() {
-        let params: experimental::NoiseParams = compute_worker.read("params");
+        info!("Its ready");
+        let params = compute_worker.read::<NoiseParams>("params");
         let noise_field: Vec<f32> = compute_worker.read_vec("noise_field");
 
         commands.trigger(RequestComplete::<C> {
@@ -91,5 +90,6 @@ fn on_complete<C: TerrainNoiseParams>(
             data: noise_field,
             _phantom: std::marker::PhantomData,
         });
+        info!("Success");
     }
 }

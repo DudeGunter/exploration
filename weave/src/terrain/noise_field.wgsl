@@ -13,7 +13,7 @@ struct NoiseParams {
 }
 
 @group(0) @binding(0)
-var<uniform> params: NoiseParams;
+var<storage, read_write> params: NoiseParams;
 
 @group(0) @binding(1)
 var<storage, read_write> noise_field: array<f32>;
@@ -99,11 +99,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         f32(params.chunk_z) * 16.0 + f32(global_id.z)
     ) * params.scale;
 
-    // Generate noise value using FBM
+    // Generate noise value using FBM (returns [0, 1])
     let noise_value = fbm(world_pos * params.frequency, params.octaves);
 
-    // Apply amplitude scaling and offset to get density (-1 to 1)
-    let density = noise_value * params.amplitude;
+    // Shift from [0, 1] to [-1, 1], then scale by amplitude
+    let density = (noise_value * 2.0 - 1.0) * params.amplitude;
 
     // Store in flat buffer (x + y*SIZE + z*SIZE*SIZE)
     let index = global_id.x + global_id.y * FIELD_SIZE + global_id.z * FIELD_SIZE * FIELD_SIZE;

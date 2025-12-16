@@ -10,15 +10,30 @@ pub fn recieve_mesh(
 ) {
     info!("Received terrain noise data");
     let _position = trigger.event().position;
+
+    let data = &trigger.event().data;
+
+    // Debug: min/max values
+    let min = data.iter().copied().fold(f32::INFINITY, f32::min);
+    let max = data.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+    let avg = data.iter().sum::<f32>() / data.len() as f32;
+
+    info!(
+        "Noise data - Min: {:.4}, Max: {:.4}, Avg: {:.4}, Count: {}",
+        min,
+        max,
+        avg,
+        data.len()
+    );
+
     let mesh_handle = meshes.add(construct_mesh(trigger.event().data.to_owned()));
 
     commands.spawn((
         Name::new("Terrain Mesh"),
         Mesh3d(mesh_handle),
-        MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::srgb(1.0, 1.0, 1.0)))),
+        MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::srgb(0.6, 1.0, 0.4)))),
     ));
 }
-
 const FIELD_SIZE: u32 = 17;
 const ISOLEVEL: f32 = 0.0;
 

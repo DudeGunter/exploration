@@ -20,7 +20,7 @@ impl Plugin for WeavePlugin {
             marching_cubes::MarchingCubesPlugin,
             voxel::VoxelPlugin,
             //terrain::field_compute::NoiseFieldComputePlugin,
-            terrain::experimental::FieldComputePlugin,
+            terrain::field_compute::FieldComputePlugin,
         ));
     }
 }
