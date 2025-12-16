@@ -28,7 +28,7 @@ pub fn plugin(app: &mut App) {
 
     app.add_plugins(ExtractResourcePlugin::<NoiseFieldQueue>::default());
     app.insert_resource(NoiseFieldQueue { queue: Vec::new() });
-    app.add_systems(Startup, testing);
+    app.add_systems(Update, testing);
 
     let mut render_app = app.get_sub_app_mut(RenderApp).unwrap();
     render_app.add_systems(
@@ -44,33 +44,37 @@ pub fn testing(
     mut commands: Commands,
     mut queue: ResMut<NoiseFieldQueue>,
     mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
+    mut input: Res<ButtonInput<KeyCode>>,
 ) {
-    let buffer: Vec<f32> = vec![99.0; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize];
-    let mut buffer = ShaderStorageBuffer::from(buffer);
-    buffer.buffer_description.usage =
-        BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC;
-    let buffer = buffers.add(buffer);
-    commands
-        .spawn((
-            Readback::buffer(buffer.clone()),
-            Params(NoiseParams::default()),
-        ))
-        .observe(
-            |trigger: On<ReadbackComplete>,
-             mut commands: Commands,
-             mut queue: ResMut<NoiseFieldQueue>,
-             query: Query<&Params>| {
-                let data: Vec<f32> = trigger.to_shader_type();
-                info!("Data readback complete: {:?}", data);
-                queue
-                    .queue
-                    .retain(|(params, _)| *params != query.single().unwrap().0);
+    if input.just_pressed(KeyCode::KeyG) {
+        info!("Generating noise field");
+        let buffer: Vec<f32> = vec![99.0; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize];
+        let mut buffer = ShaderStorageBuffer::from(buffer);
+        buffer.buffer_description.usage =
+            BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC;
+        let buffer = buffers.add(buffer);
+        commands
+            .spawn((
+                Readback::buffer(buffer.clone()),
+                Params(NoiseParams::default()),
+            ))
+            .observe(
+                |trigger: On<ReadbackComplete>,
+                 mut commands: Commands,
+                 mut queue: ResMut<NoiseFieldQueue>,
+                 query: Query<&Params>| {
+                    let data: Vec<f32> = trigger.to_shader_type();
+                    info!("Data readback complete: {:?}", data);
+                    queue
+                        .queue
+                        .retain(|(params, _)| *params != query.single().unwrap().0);
 
-                commands.entity(trigger.entity).despawn();
-            },
-        );
+                    commands.entity(trigger.entity).despawn();
+                },
+            );
 
-    queue.queue.push((NoiseParams::default(), buffer));
+        queue.queue.push((NoiseParams::default(), buffer));
+    }
 }
 
 #[derive(ExtractResource, Resource, Clone)]
@@ -206,19 +210,12 @@ impl render_graph::Node for NoiseComputeNode {
                     contents: bytemuck::cast_slice(&[*param]),
                     usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
                 });
-                let storage_buf = device.create_buffer(&BufferDescriptor {
-                    label: Some("noise_storage"),
-                    size: (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE * 4) as u64,
-                    usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
-                    mapped_at_creation: false,
-                });
                 let bind_group = device.create_bind_group(
                     "noise_bind_group",
                     &pipeline.layout,
                     &BindGroupEntries::sequential((
                         param_buf.as_entire_binding(),
-                        storage_buf.as_entire_binding(),
-                        //buffers.get(buffer).unwrap().buffer.as_entire_binding(),
+                        buffers.get(buffer).unwrap().buffer.as_entire_binding(),
                     )),
                 );
                 pass.set_bind_group(0, &bind_group, &[]);
