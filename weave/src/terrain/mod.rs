@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use field_compute::*;
 
-pub mod experimental;
 pub mod field_compute;
 
 // It should be noted...
@@ -64,6 +63,44 @@ pub struct RequestComplete<T: TerrainNoiseParams> {
     pub position: IVec3,
     pub data: Vec<f32>,
     _phantom: std::marker::PhantomData<T>,
+}
+
+pub fn testing<C: TerrainNoiseParams>(
+    trigger: On<RequestNoise<C>>,
+    mut commands: Commands,
+    mut queue: ResMut<NoiseFieldQueue>,
+    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
+) {
+    info!("Generating noise field");
+    let buffer: Vec<f32> = vec![0.0; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize];
+    let mut buffer = ShaderStorageBuffer::from(buffer);
+    buffer.buffer_description.usage =
+        BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC;
+    let buffer = buffers.add(buffer);
+    commands
+        .spawn((
+            Readback::buffer(buffer.clone()),
+            Params(NoiseParams::default()),
+        ))
+        .observe(
+            |trigger: On<ReadbackComplete>,
+             mut commands: Commands,
+             mut queue: ResMut<NoiseFieldQueue>,
+             query: Query<&Params>| {
+                let data: Vec<f32> = trigger.to_shader_type();
+                // Unnecessary if you just wait a bit
+                if data.iter().sum::<f32>() == 0.0 {
+                    return;
+                }
+                queue
+                    .queue
+                    .retain(|(params, _)| *params != query.single().unwrap().0);
+
+                commands.entity(trigger.entity).despawn();
+            },
+        );
+
+    queue.queue.push((NoiseParams::default(), buffer));
 }
 
 fn queue_chunk<C: TerrainNoiseParams>(
