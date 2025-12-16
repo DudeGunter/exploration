@@ -42,43 +42,6 @@ pub fn plugin(app: &mut App) {
 #[derive(Component)]
 pub struct Params(pub NoiseParams);
 
-pub fn _testing(
-    mut commands: Commands,
-    mut queue: ResMut<NoiseFieldQueue>,
-    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
-    input: Res<ButtonInput<KeyCode>>,
-) {
-    if input.just_pressed(KeyCode::KeyG) {
-        info!("Generating noise field");
-        let buffer: Vec<f32> = vec![0.0; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize];
-        let mut buffer = ShaderStorageBuffer::from(buffer);
-        buffer.buffer_description.usage =
-            BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC;
-        let buffer = buffers.add(buffer);
-        commands
-            .spawn((
-                Readback::buffer(buffer.clone()),
-                Params(NoiseParams::default()),
-            ))
-            .observe(
-                |trigger: On<ReadbackComplete>,
-                 mut commands: Commands,
-                 mut queue: ResMut<NoiseFieldQueue>,
-                 query: Query<&Params>| {
-                    let data: Vec<f32> = trigger.to_shader_type();
-                    info!("Data readback complete: {:?}", data);
-                    queue
-                        .queue
-                        .retain(|(params, _)| *params != query.single().unwrap().0);
-
-                    commands.entity(trigger.entity).despawn();
-                },
-            );
-
-        queue.queue.push((NoiseParams::default(), buffer));
-    }
-}
-
 #[derive(ExtractResource, Resource, Clone)]
 pub struct NoiseFieldQueue {
     pub queue: Vec<(NoiseParams, Handle<ShaderStorageBuffer>)>,
@@ -124,6 +87,7 @@ fn init_pipeline(
     asset_server: Res<AssetServer>,
     cache: Res<PipelineCache>,
 ) {
+    // These could be simplified with helper functions from bevy... don't care to fiddle with what works
     let layout = device.create_bind_group_layout(
         "noise_layout",
         &[
@@ -173,7 +137,7 @@ fn init_pipeline(
     commands.insert_resource(NoisePipeline { layout, pipeline });
 }
 
-#[derive(Default)] // I don't know why its {} or default, jus following the ex.
+#[derive(Default)] // I don't know why its {} and default, jus following the ex.
 pub struct NoiseComputeNode {}
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
@@ -219,7 +183,9 @@ impl render_graph::Node for NoiseComputeNode {
                 );
                 pass.set_bind_group(0, &bind_group, &[]);
                 pass.set_pipeline(init_pipeline);
-                info!("Dispatching!!!");
+
+                // I'm pretty sure this is all bullshite. I had AI help me initially, but the ex doesn't require this
+                // Still dont full understand the purpose of work groups, especially in this context
                 pass.dispatch_workgroups(
                     (FIELD_SIZE + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE,
                     (FIELD_SIZE + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE,

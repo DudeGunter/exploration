@@ -3,7 +3,7 @@ use field_compute::*;
 
 pub mod field_compute;
 
-// It should be noted...
+// It should be noted... (fixed now) (put in custom compute system)
 // Previously, we didn't use bevy_app_compute or smth,
 // it was a more low level integration with the bevy render graph
 // I could never get that working properly because of readback issues,
@@ -11,11 +11,20 @@ pub mod field_compute;
 // the issue is you can't run in parallel or it would be more ugly requireing multiple worker resources of
 // an unknown amount, making it a queue for now.
 //
-// It should also be noted...
+// It should also be noted... (I want this next! have to think about relationship with area, world, and terrain)
 // I would have avoided generics as a whole if you could query off data + components and not just components
 // You could just do components than filter for the appropriate data but I also felt as though these noise funcs
 // could be applied to potentially more than just terrain.
 // Also... it seems that component + data querys are coming, althouth the syntax is a bit strange
+//
+// TODO list:
+// Make it not generic/explore other options
+// simplify and remove excess fat for mantainance
+// better 2d suport
+// more general:
+// shader pass systems
+// more compute shaders
+// make my own bevy_compute_workers with better support
 
 /// Handles the compute shader noise
 pub struct TerrainNoisePlugin<T: TerrainNoiseParams + Clone>(pub T);
@@ -64,6 +73,7 @@ pub struct RequestComplete<T: TerrainNoiseParams> {
     _phantom: std::marker::PhantomData<T>,
 }
 
+// This could be broken up
 pub fn handle_requests<C: TerrainNoiseParams>(
     trigger: On<RequestNoise<C>>,
     mut commands: Commands,
@@ -109,7 +119,8 @@ pub fn handle_requests<C: TerrainNoiseParams>(
                     _phantom: std::marker::PhantomData,
                 });
 
-                // Handle removing the observer etc
+                // TODO: this might not be removing fast enough and therefore is calling twice
+                // sometimes causing excessive noise generation without purpose (although I might be wrong)
                 queue
                     .queue
                     .retain(|(queued_params, _)| *queued_params != params);
