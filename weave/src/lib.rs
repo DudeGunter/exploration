@@ -1,5 +1,6 @@
 // This crate is meant to represent the composition of the world
 // The *weave* so to speak, currently there shuold be voxel and marching
+// No longer what is mentioned above
 use bevy::prelude::*;
 
 mod area;
