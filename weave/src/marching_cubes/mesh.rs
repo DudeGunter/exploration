@@ -1,5 +1,6 @@
 use super::tables::*;
 use crate::terrain::{RequestComplete, field_compute::*};
+//use avian3d::prelude::*;
 use bevy::{mesh::Indices, platform::collections::HashMap};
 
 pub fn recieve_mesh(
@@ -8,31 +9,18 @@ pub fn recieve_mesh(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    info!("Received terrain noise data");
     let position = trigger.event().position;
-
-    let data = &trigger.event().data;
-
-    // Debug: min/max values
-    let min = data.iter().copied().fold(f32::INFINITY, f32::min);
-    let max = data.iter().copied().fold(f32::NEG_INFINITY, f32::max);
-    let avg = data.iter().sum::<f32>() / data.len() as f32;
-
-    info!(
-        "Noise data - Min: {:.4}, Max: {:.4}, Avg: {:.4}, Count: {}",
-        min,
-        max,
-        avg,
-        data.len()
-    );
-
-    let mesh_handle = meshes.add(construct_mesh(trigger.event().data.to_owned()));
+    let mesh = construct_mesh(&trigger.event().data);
+    let mesh_handle = meshes.add(mesh);
+    //let collider = Collider::trimesh_from_mesh(&mesh).unwrap();
     let transform =
         Transform::from_translation(position.as_vec3() * Vec3::splat((FIELD_SIZE - 1) as f32));
     commands.spawn((
         Name::new("Terrain Mesh"),
         Mesh3d(mesh_handle),
         transform,
+        //collider,
+        //RigidBody::Static,
         MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::srgb(0.6, 1.0, 0.4)))),
     ));
 }
@@ -40,7 +28,7 @@ pub fn recieve_mesh(
 // Interval: (-1.0, 1.0) maybe... not to good at math ngl
 const ISOLEVEL: f32 = 0.25;
 
-pub fn construct_mesh(data: Vec<f32>) -> Mesh {
+pub fn construct_mesh(data: &Vec<f32>) -> Mesh {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
     let mut edge_vertices: HashMap<(u32, u32, u32, u8), u32> = HashMap::new();

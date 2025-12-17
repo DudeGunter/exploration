@@ -36,9 +36,9 @@ impl Default for NoiseParams {
 
 pub fn request_area(mut commands: Commands, input: Res<ButtonInput<KeyCode>>) {
     if input.just_pressed(KeyCode::KeyG) {
-        for x in -3..3 {
-            for y in -3..3 {
-                for z in -3..3 {
+        for x in -5..5 {
+            for y in -5..5 {
+                for z in -5..5 {
                     commands.trigger(RequestNoise {
                         position: IVec3::new(x, y, z),
                     });

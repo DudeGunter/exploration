@@ -123,8 +123,6 @@ fn init_pipeline(
         ],
     );
 
-    info!("Layout: {:?}", layout);
-
     let pipeline = cache.queue_compute_pipeline(ComputePipelineDescriptor {
         label: Some("noise_pipeline".into()),
         layout: vec![layout.clone()],

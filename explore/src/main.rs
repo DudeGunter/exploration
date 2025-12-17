@@ -27,7 +27,7 @@ fn main() -> AppExit {
         console::ConsolePlugin,
         //PortalPlugin,
     ));
-    app.add_systems(Startup, (setup, spawn_example_scene));
+    app.add_systems(Startup, setup);
     app.run()
 }
 

@@ -48,7 +48,7 @@ pub struct TerrainNoiseParams {
 impl Default for TerrainNoiseParams {
     fn default() -> Self {
         Self {
-            scale: 0.1,
+            scale: 0.05,
             frequency: 1.0,
             amplitude: 1.0,
             octaves: 1,
