@@ -13,7 +13,7 @@ struct NoiseParams {
 }
 
 @group(0) @binding(0)
-var<storage, read_write> params: NoiseParams;
+var<uniform> params: NoiseParams;
 
 @group(0) @binding(1)
 var<storage, read_write> noise_field: array<f32>;

@@ -1,5 +1,5 @@
-use super::tables::*;
-use crate::terrain::{RequestComplete, field_compute::*};
+use crate::tables::*;
+use crate::terrain::*;
 //use avian3d::prelude::*;
 use bevy::{mesh::Indices, platform::collections::HashMap};
 
@@ -138,5 +138,5 @@ pub fn construct_mesh(data: &Vec<f32>) -> Mesh {
     )
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
     .with_inserted_indices(Indices::U32(indices))
-    .with_computed_area_weighted_normals()
+    .with_computed_area_weighted_normals() // just guessed abt. whats appropriate here
 }

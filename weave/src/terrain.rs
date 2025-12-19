@@ -1,13 +1,3 @@
-// Custom render graph node for noise field generation,
-// utilizes parallelism on the gpu for extremely fast generation... hopefully.
-// This is experimental and hopefully will replace the one-at-a-time generation.
-// Note: This isn't probably needed but I want it working.
-//
-// IT WORKS BIG NOTE:
-// For the longest time I couldn't figure out why I was just getting zeros back
-// Turns out that you must wait a bit (6-7 frames) for the shader to be ready.
-// (this wasn't noted in the docs)
-//#![allow(unused)] // for now... No longer!
 pub use bevy::{
     asset::embedded_asset,
     prelude::*,
@@ -23,6 +13,97 @@ pub use bevy::{
     },
 };
 use bytemuck::{Pod, Zeroable};
+
+// TODO list:
+// Make it not generic/explore other options
+// simplify and remove excess fat for mantainance
+// better 2d suport
+// more general:
+// shader pass systems
+// more compute shaders
+// make my own bevy_compute_workers with better support
+
+#[derive(Resource)]
+pub struct TerrainNoiseParams {
+    pub scale: f32,
+    pub frequency: f32,
+    pub amplitude: f32,
+    pub octaves: u32,
+}
+
+impl Default for TerrainNoiseParams {
+    fn default() -> Self {
+        Self {
+            scale: 0.05,
+            frequency: 1.0,
+            amplitude: 1.0,
+            octaves: 1,
+        }
+    }
+}
+
+#[derive(EntityEvent)]
+pub struct RequestNoise {
+    pub entity: Entity,
+    pub position: IVec3,
+}
+
+#[derive(Event)]
+pub struct RequestComplete {
+    pub position: IVec3,
+    pub data: Vec<f32>,
+}
+
+pub fn clear_queue(mut queue: ResMut<NoiseFieldQueue>) {
+    queue.queue.clear();
+}
+
+pub fn handle_requests(
+    trigger: On<RequestNoise>,
+    mut commands: Commands,
+    params: Res<TerrainNoiseParams>,
+    mut queue: ResMut<NoiseFieldQueue>,
+    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
+) {
+    let buffer: Vec<f32> = vec![0.0; (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE) as usize];
+    let mut buffer = ShaderStorageBuffer::from(buffer);
+    buffer.buffer_description.usage =
+        BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC;
+    let buffer = buffers.add(buffer);
+    let coord = trigger.event().position;
+
+    let noise_params = NoiseParams {
+        chunk_x: coord.x,
+        chunk_y: coord.y,
+        chunk_z: coord.z,
+        scale: params.scale,
+        frequency: params.frequency,
+        amplitude: params.amplitude,
+        octaves: params.octaves,
+        _padding: 0,
+    };
+    commands
+        .spawn((Readback::buffer(buffer.clone()), Params(noise_params)))
+        .observe(
+            |trigger: On<ReadbackComplete>, mut commands: Commands, query: Query<&Params>| {
+                let data: Vec<f32> = trigger.to_shader_type();
+                // Unnecessary if you just wait a bit
+                if data.iter().sum::<f32>() == 0.0 {
+                    warn!("Likely didn't generate properly, all the noise data is zero!");
+                    warn!("This is likely caused by the shader not being compiled yet or smth");
+                }
+                let params = query.get(trigger.entity).unwrap().0;
+                commands.trigger(RequestComplete {
+                    position: IVec3::new(params.chunk_x, params.chunk_y, params.chunk_z),
+                    data,
+                });
+
+                commands.entity(trigger.entity).despawn();
+            },
+        );
+
+    queue.queue.push((noise_params, buffer));
+}
 
 pub const FIELD_SIZE: u32 = 32;
 pub const WORK_GROUP_SIZE: u32 = 4;
@@ -46,6 +127,26 @@ pub struct Params(pub NoiseParams);
 #[derive(ExtractResource, Resource, Clone)]
 pub struct NoiseFieldQueue {
     pub queue: Vec<(NoiseParams, Handle<ShaderStorageBuffer>)>,
+}
+
+#[derive(Resource, Clone, Reflect)]
+#[reflect(Resource)]
+pub struct TerrainSettings {
+    pub scale: f32,
+    pub frequency: f32,
+    pub amplitude: f32,
+    pub octaves: u32,
+}
+
+impl Default for TerrainSettings {
+    fn default() -> Self {
+        Self {
+            scale: 0.1,
+            frequency: 1.0,
+            amplitude: 1.0,
+            octaves: 1,
+        }
+    }
 }
 
 #[repr(C)]
@@ -96,7 +197,7 @@ fn init_pipeline(
                 binding: 0,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
+                    ty: BufferBindingType::Uniform,
                     has_dynamic_offset: false,
                     min_binding_size: Some(
                         std::num::NonZeroU64::new(std::mem::size_of::<NoiseParams>() as u64)
@@ -124,12 +225,8 @@ fn init_pipeline(
     );
 
     let pipeline = cache.queue_compute_pipeline(ComputePipelineDescriptor {
-        label: Some("noise_pipeline".into()),
         layout: vec![layout.clone()],
-        push_constant_ranges: vec![],
-        shader: asset_server.load("embedded://weave/terrain/noise_field.wgsl"),
-        shader_defs: vec![],
-        entry_point: Some(std::borrow::Cow::from("main")),
+        shader: asset_server.load("embedded://weave/noise_field.wgsl"),
         ..default()
     });
 
@@ -146,6 +243,7 @@ fn add_compute_render_graph_node(mut render_graph: ResMut<RenderGraph>) {
     render_graph.add_node(ComputeNodeLabel, NoiseComputeNode::default());
 }
 
+// None of the labels are needed I imagine
 impl render_graph::Node for NoiseComputeNode {
     fn run(
         &self,
@@ -170,7 +268,7 @@ impl render_graph::Node for NoiseComputeNode {
                 let param_buf = device.create_buffer_with_data(&BufferInitDescriptor {
                     label: Some("Params"),
                     contents: bytemuck::cast_slice(&[*param]),
-                    usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+                    usage: BufferUsages::UNIFORM,
                 });
                 let bind_group = device.create_bind_group(
                     "noise_bind_group",

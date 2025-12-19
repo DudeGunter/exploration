@@ -7,7 +7,7 @@ use bevy_flycam::prelude::*;
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use networking::prelude::*;
 use portal::PortalPlugin;
-use voxel_terrain::prelude::*;
+//use voxel_terrain::prelude::*;
 use weave::WeavePlugin;
 // Everything and anything in bevy diddy blud
 
@@ -44,8 +44,9 @@ fn setup(mut commands: Commands) {
     commands.spawn(Test::default());
     commands.spawn((
         FlyCam,
-        Observer,
-        AreaManaged::Circle(25.0),
+        //Observer,
+        //AreaManaged::Circle(25.0),
+        //weave::area::Observer,
         Camera3d::default(),
         Atmosphere::EARTH,
         AmbientLight {
