@@ -3,6 +3,7 @@
 // - Create different chunk operations easily
 // - Manage the rate of specific modifications dynamically and defined
 use bevy::prelude::*;
+use console::message;
 
 #[derive(Component)]
 pub struct RenderDistance(pub u32);
@@ -18,6 +19,7 @@ pub enum Lod {
     High,
 }
 
+#[derive(Component)]
 pub enum Status {
     Active,
     Inactive,
@@ -37,7 +39,7 @@ pub fn create_empty_chunk(trigger: On<CreateEmpty>, mut commands: Commands) {
     });
 }
 
-#[derive(Event)]
+#[derive(Event, Copy, Clone)]
 pub struct CreateTerrain(pub IVec2);
 
 impl Operation for CreateTerrain {}
@@ -47,9 +49,23 @@ pub fn create_terrain_chunk(
     mut commands: Commands,
     chunks: Query<(Entity, &Chunk)>,
 ) {
-    //    for (entity, chunk) in chunks {
-    //        if chunk.position == trigger.0 {
-    //            commands.entity(entity).insert()
-    //        }
-    //    }
+    commands.trigger(message("Attempting to create chunk"));
+    if let Some((entity, chunk)) = chunks.iter().find(|(_, chunk)| chunk.position == trigger.0) {
+        commands.trigger(crate::terrain::RequestNoise {
+            entity,
+            position: chunk.position.xxy(),
+        });
+        commands
+            .entity(entity)
+            .insert(Status::PendingOperation(Box::new(*trigger.event())))
+            .observe(crate::mesh::recieve_mesh)
+            .observe(
+                |trigger: On<crate::terrain::RequestComplete>, mut commands: Commands| {
+                    commands.entity(trigger.entity).insert(Status::Active);
+                },
+            );
+    } else {
+        commands.trigger(CreateEmpty(trigger.0));
+        commands.trigger(CreateTerrain(trigger.0));
+    }
 }

@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 bevy.workspace = true
+console.workspace = true
 bytemuck.workspace = true
 avian3d.workspace = true
 noiz.workspace = true

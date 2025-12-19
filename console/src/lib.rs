@@ -32,6 +32,19 @@ impl Plugin for ConsolePlugin {
     }
 }
 
+/// ConsoleMessage wrapper with formatting
+#[macro_export]
+macro_rules! message {
+    ($($arg:tt)*) => {
+        message(&format!($($arg)*))
+    };
+}
+
+/// ConsoleMessage wrapper without formatting
+pub fn message<S: Into<String>>(message: S) -> ConsoleMessage {
+    ConsoleMessage::new(message.into())
+}
+
 #[derive(Resource)]
 pub struct ConsoleConfig {
     prefix: char,
@@ -166,8 +179,10 @@ pub fn trying_command(
     if let Some(command) = console_config.get_system(&command_name.to_string()) {
         if let Some(system_id) = command.get_processed() {
             commands.run_system_with(system_id, arguments.to_string());
+            return;
         }
     }
+    commands.trigger(message("Something went wrong"));
 }
 
 fn submit_text_routing(
@@ -217,6 +232,7 @@ pub fn output_console_message(
 ) {
     let output = commands
         .spawn((
+            console_message.event().clone(),
             console_output(console_message.message.clone()),
             TextColor(console_message.color),
         ))

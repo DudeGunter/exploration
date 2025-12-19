@@ -15,7 +15,7 @@ pub fn recieve_mesh(
     //let collider = Collider::trimesh_from_mesh(&mesh).unwrap();
     let transform =
         Transform::from_translation(position.as_vec3() * Vec3::splat((FIELD_SIZE - 1) as f32));
-    commands.spawn((
+    commands.entity(trigger.entity).insert((
         Name::new("Terrain Mesh"),
         Mesh3d(mesh_handle),
         transform,

@@ -48,8 +48,9 @@ pub struct RequestNoise {
     pub position: IVec3,
 }
 
-#[derive(Event)]
+#[derive(EntityEvent)]
 pub struct RequestComplete {
+    pub entity: Entity,
     pub position: IVec3,
     pub data: Vec<f32>,
 }
@@ -83,7 +84,8 @@ pub fn handle_requests(
         _padding: 0,
     };
     commands
-        .spawn((Readback::buffer(buffer.clone()), Params(noise_params)))
+        .entity(trigger.entity)
+        .insert((Readback::buffer(buffer.clone()), Params(noise_params)))
         .observe(
             |trigger: On<ReadbackComplete>, mut commands: Commands, query: Query<&Params>| {
                 let data: Vec<f32> = trigger.to_shader_type();
@@ -94,6 +96,7 @@ pub fn handle_requests(
                 }
                 let params = query.get(trigger.entity).unwrap().0;
                 commands.trigger(RequestComplete {
+                    entity: trigger.entity,
                     position: IVec3::new(params.chunk_x, params.chunk_y, params.chunk_z),
                     data,
                 });

@@ -8117,6 +8117,7 @@ dependencies = [
  "avian3d",
  "bevy",
  "bytemuck",
+ "console",
  "log",
  "noiz",
  "tracing",

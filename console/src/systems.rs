@@ -21,6 +21,14 @@ pub fn default_commands(mut console_config: ResMut<ConsoleConfig>) {
         },
         set_field,
     );
+    console_config.insert_command_with_metadata(
+        "clear",
+        CommandMetadata {
+            description: "Clear the console".to_string(),
+            usage: "clear".to_string(),
+        },
+        clear,
+    );
 }
 
 pub fn help(In(argument): In<String>, console_config: Res<ConsoleConfig>, mut commands: Commands) {
@@ -28,15 +36,9 @@ pub fn help(In(argument): In<String>, console_config: Res<ConsoleConfig>, mut co
         for command in console_config.get_commands() {
             match console_config.get_metadata(command) {
                 Some(metadata) => {
-                    commands.trigger(ConsoleMessage::new(format!("Command: {}", command)));
-                    commands.trigger(ConsoleMessage::new(format!(
-                        "   ->Description: {}",
-                        metadata.description
-                    )));
-                    commands.trigger(ConsoleMessage::new(format!(
-                        "   ->Usage: {}",
-                        metadata.usage
-                    )));
+                    commands.trigger(message!("Command: {}", command));
+                    commands.trigger(message!("   ->Description: {}", metadata.description));
+                    commands.trigger(message!("   ->Usage: {}", metadata.usage));
                 }
                 None => (),
             }
@@ -44,21 +46,22 @@ pub fn help(In(argument): In<String>, console_config: Res<ConsoleConfig>, mut co
     } else {
         match console_config.get_metadata(argument.clone()) {
             Some(metadata) => {
-                commands.trigger(ConsoleMessage::new(format!("Command: {}", argument)));
-                commands.trigger(ConsoleMessage::new(format!(
-                    "   ->Description: {}",
-                    metadata.description
-                )));
-                commands.trigger(ConsoleMessage::new(format!(
-                    "   ->Usage: {}",
-                    metadata.usage
-                )));
+                commands.trigger(message!("Command: {}", argument));
+                commands.trigger(message!("   ->Description: {}", metadata.description));
+                commands.trigger(message!("   ->Usage: {}", metadata.usage));
             }
-            None => commands.trigger(ConsoleMessage::new(format!(
-                "Command not found: {}",
-                argument
-            ))),
+            None => commands.trigger(message(format!("Command not found: {}", argument))),
         }
+    }
+}
+
+pub fn clear(
+    In(_): In<String>,
+    mut commands: Commands,
+    console_messages: Query<Entity, With<ConsoleMessage>>,
+) {
+    for entity in console_messages.iter() {
+        commands.entity(entity).despawn();
     }
 }
 
@@ -99,6 +102,7 @@ pub fn spawn_reflected(In(component): In<String>, world: &mut World) {
 use bevy::reflect::{ReflectMut, serde::ReflectDeserializer};
 use serde::de::DeserializeSeed;
 
+// This shit is broken heavily btw, I don't think its even possible. fun experiment
 #[allow(unreachable_code, unused_variables)]
 fn set_field(In(arguments): In<String>, world: &mut World) {
     world.trigger(ConsoleMessage::new(

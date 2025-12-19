@@ -3,7 +3,7 @@ use serde::*;
 
 ///BIG NOTE: it could be more effiecent if a large amount of lines are being outputed
 /// to send them as a vec or list of somesort as to not run the same observer 100x times over
-#[derive(Event, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Component, Event, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ConsoleMessage {
     pub message: String,
     pub color: Color,
