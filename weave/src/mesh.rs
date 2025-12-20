@@ -1,6 +1,17 @@
 use crate::terrain::*;
 use bevy::{mesh::Indices, platform::collections::HashMap};
 
+#[derive(Resource, Clone, Reflect)]
+pub struct TerrainMeshMaterial(pub Handle<StandardMaterial>);
+
+pub fn setup_terrain_mesh_material(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let material = materials.add(StandardMaterial::from_color(Color::srgb(0.3, 0.9, 0.5)));
+    commands.insert_resource(TerrainMeshMaterial(material));
+}
+
 // Interval: (-1.0, 1.0) maybe... not to good at math ngl
 const ISOLEVEL: f32 = 0.25;
 

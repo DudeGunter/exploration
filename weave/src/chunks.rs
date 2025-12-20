@@ -2,7 +2,10 @@
 // Features:
 // - Create different chunk operations easily
 // - Manage the rate of specific modifications dynamically and defined
-use crate::{mesh::construct_mesh, terrain::*};
+use crate::{
+    mesh::{TerrainMeshMaterial, construct_mesh},
+    terrain::*,
+};
 use bevy::prelude::*;
 use console::message;
 
@@ -75,7 +78,7 @@ pub fn create_terrain_chunk(
                 |trigger: On<RequestComplete>,
                  mut commands: Commands,
                  mut meshes: ResMut<Assets<Mesh>>,
-                 mut materials: ResMut<Assets<StandardMaterial>>| {
+                 material: Res<TerrainMeshMaterial>| {
                     let mesh = construct_mesh(&trigger.event().data);
                     let mesh_handle = meshes.add(mesh);
                     //let collider = Collider::trimesh_from_mesh(&mesh).unwrap();
@@ -86,10 +89,7 @@ pub fn create_terrain_chunk(
                             Mesh3d(mesh_handle),
                             //collider,
                             //RigidBody::Static,
-                            MeshMaterial3d(
-                                materials
-                                    .add(StandardMaterial::from_color(Color::srgb(0.6, 1.0, 0.4))),
-                            ),
+                            MeshMaterial3d(material.0.clone()),
                         ))
                         .id();
                     commands.entity(trigger.entity).add_child(terrain);

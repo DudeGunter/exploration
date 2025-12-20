@@ -22,6 +22,9 @@ impl Plugin for WeavePlugin {
         });
         app.add_observer(chunks::create_empty_chunk);
         app.add_observer(chunks::create_terrain_chunk);
+
+        // Mesh
+        app.add_systems(Startup, mesh::setup_terrain_mesh_material);
     }
 }
 
