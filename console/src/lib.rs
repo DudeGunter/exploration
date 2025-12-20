@@ -45,6 +45,13 @@ pub fn message<S: Into<String>>(message: S) -> ConsoleMessage {
     ConsoleMessage::new(message.into())
 }
 
+pub fn parse_number_arguments<T: std::str::FromStr>(input: &str) -> Vec<T> {
+    input
+        .split_whitespace()
+        .filter_map(|s| s.parse().ok())
+        .collect()
+}
+
 #[derive(Resource)]
 pub struct ConsoleConfig {
     prefix: char,

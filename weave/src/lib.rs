@@ -3,7 +3,6 @@ use console::*;
 
 pub mod chunks;
 pub mod mesh;
-pub mod tables;
 pub mod terrain;
 
 pub struct WeavePlugin;
@@ -28,14 +27,24 @@ pub fn add_commands(mut console_config: ResMut<ConsoleConfig>) {
 }
 
 pub fn create_chunk_command(In(arguments): In<String>, mut commands: Commands) {
-    let parts: Vec<&str> = arguments.split_whitespace().collect();
-    //commands.trigger(message(format!("{:?}", parts)));
-    if let Ok((x, y)) = parts[0]
-        .parse::<i32>()
-        .and_then(|x| parts[1].parse::<i32>().map(|y| (x, y)))
-    {
-        commands.trigger(chunks::CreateTerrain(IVec2::new(x, y)));
-    } else {
-        commands.trigger(message!("Invalid arguments"));
+    let coords: Vec<i32> = parse_number_arguments(&arguments);
+
+    match coords.len() {
+        3 => {
+            let pos = IVec3::new(coords[0], coords[1], coords[2]);
+            commands.trigger(chunks::CreateTerrain(pos));
+        }
+        6 => {
+            let min = IVec3::new(coords[0], coords[1], coords[2]);
+            let max = IVec3::new(coords[3], coords[4], coords[5]);
+            for x in min.x..=max.x {
+                for y in min.y..=max.y {
+                    for z in min.z..=max.z {
+                        commands.trigger(chunks::CreateTerrain(IVec3::new(x, y, z)));
+                    }
+                }
+            }
+        }
+        _ => commands.trigger(message!("Usage: `x y z` or `x y z to x y z`")),
     }
 }

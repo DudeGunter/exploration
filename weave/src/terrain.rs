@@ -83,11 +83,11 @@ pub fn handle_requests(
         octaves: params.octaves,
         _padding: 0,
     };
+    let terrain_entity = trigger.entity;
     commands
-        .entity(trigger.entity)
-        .insert((Readback::buffer(buffer.clone()), Params(noise_params)))
+        .spawn((Readback::buffer(buffer.clone()), Params(noise_params)))
         .observe(
-            |trigger: On<ReadbackComplete>, mut commands: Commands, query: Query<&Params>| {
+            move |trigger: On<ReadbackComplete>, mut commands: Commands, query: Query<&Params>| {
                 let data: Vec<f32> = trigger.to_shader_type();
                 // Unnecessary if you just wait a bit
                 if data.iter().sum::<f32>() == 0.0 {
@@ -96,7 +96,7 @@ pub fn handle_requests(
                 }
                 let params = query.get(trigger.entity).unwrap().0;
                 commands.trigger(RequestComplete {
-                    entity: trigger.entity,
+                    entity: terrain_entity,
                     position: IVec3::new(params.chunk_x, params.chunk_y, params.chunk_z),
                     data,
                 });
@@ -108,7 +108,7 @@ pub fn handle_requests(
     queue.queue.push((noise_params, buffer));
 }
 
-pub const FIELD_SIZE: u32 = 32;
+pub const FIELD_SIZE: u32 = crate::chunks::CHUNK_SIZE + 1;
 pub const WORK_GROUP_SIZE: u32 = 4;
 
 pub fn plugin(app: &mut App) {
