@@ -60,14 +60,14 @@ pub fn construct_mesh(data: &Vec<f32>) -> Mesh {
                 let mut edge_list = [Vec3::ZERO; 12];
 
                 let corners_pos = [
-                    Vec3::new(x as f32, y as f32, z as f32),
-                    Vec3::new((x + 1) as f32, y as f32, z as f32),
-                    Vec3::new((x + 1) as f32, (y + 1) as f32, z as f32),
-                    Vec3::new(x as f32, (y + 1) as f32, z as f32),
-                    Vec3::new(x as f32, y as f32, (z + 1) as f32),
-                    Vec3::new((x + 1) as f32, y as f32, (z + 1) as f32),
-                    Vec3::new((x + 1) as f32, (y + 1) as f32, (z + 1) as f32),
-                    Vec3::new(x as f32, (y + 1) as f32, (z + 1) as f32),
+                    vec3(x as f32, y as f32, z as f32),
+                    vec3((x + 1) as f32, y as f32, z as f32),
+                    vec3((x + 1) as f32, (y + 1) as f32, z as f32),
+                    vec3(x as f32, (y + 1) as f32, z as f32),
+                    vec3(x as f32, y as f32, (z + 1) as f32),
+                    vec3((x + 1) as f32, y as f32, (z + 1) as f32),
+                    vec3((x + 1) as f32, (y + 1) as f32, (z + 1) as f32),
+                    vec3(x as f32, (y + 1) as f32, (z + 1) as f32),
                 ];
 
                 for i in 0..12 {

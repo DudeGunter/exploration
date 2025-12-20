@@ -6,11 +6,18 @@ use crate::{mesh::construct_mesh, terrain::*};
 use bevy::prelude::*;
 use console::message;
 
-pub const CHUNK_SIZE: u32 = 32;
+pub const CHUNK_SIZE: u32 = 64;
 
 #[derive(Component)]
 pub struct RenderDistance(pub u32);
 
+// Container for chunks/world
+#[derive(Component, Reflect)]
+#[require(Name::new("Weave"), Transform, Visibility::Visible)]
+pub struct Weave;
+
+// Chunks have children for the purpose of attaching different placeable objects
+// in the same chunks (the actual terrain is a child of the chunk)
 #[derive(Component)]
 pub struct Chunk {
     pub position: IVec3,
@@ -25,16 +32,24 @@ pub enum Lod {
 #[derive(Event)]
 pub struct CreateEmpty(pub IVec3);
 
-pub fn create_empty_chunk(trigger: On<CreateEmpty>, mut commands: Commands) {
+pub fn create_empty_chunk(
+    trigger: On<CreateEmpty>,
+    mut commands: Commands,
+    weave: Single<Entity, With<Weave>>,
+) {
     let transform =
         Transform::from_translation(trigger.0.as_vec3() * Vec3::splat(CHUNK_SIZE as f32));
-    commands.spawn((
-        Visibility::Visible,
-        transform,
-        Chunk {
-            position: trigger.0,
-        },
-    ));
+    let new_chunk = commands
+        .spawn((
+            Name::new(format!("Chunk {}", trigger.0)),
+            Visibility::Visible,
+            transform,
+            Chunk {
+                position: trigger.0,
+            },
+        ))
+        .id();
+    commands.entity(*weave).add_child(new_chunk);
 }
 
 #[derive(Event, Copy, Clone)]
@@ -64,17 +79,20 @@ pub fn create_terrain_chunk(
                     let mesh = construct_mesh(&trigger.event().data);
                     let mesh_handle = meshes.add(mesh);
                     //let collider = Collider::trimesh_from_mesh(&mesh).unwrap();
-
-                    commands.entity(trigger.entity).insert(children![(
-                        Name::new("Terrain Mesh"),
-                        TerrainMesh,
-                        Mesh3d(mesh_handle),
-                        //collider,
-                        //RigidBody::Static,
-                        MeshMaterial3d(
-                            materials.add(StandardMaterial::from_color(Color::srgb(0.6, 1.0, 0.4))),
-                        ),
-                    )]);
+                    let terrain = commands
+                        .spawn((
+                            Name::new("Terrain Mesh"),
+                            TerrainMesh,
+                            Mesh3d(mesh_handle),
+                            //collider,
+                            //RigidBody::Static,
+                            MeshMaterial3d(
+                                materials
+                                    .add(StandardMaterial::from_color(Color::srgb(0.6, 1.0, 0.4))),
+                            ),
+                        ))
+                        .id();
+                    commands.entity(trigger.entity).add_child(terrain);
                 },
             );
         } else {

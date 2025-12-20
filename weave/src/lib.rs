@@ -17,6 +17,9 @@ impl Plugin for WeavePlugin {
         app.add_observer(terrain::handle_requests);
 
         // Chunk
+        app.add_systems(Startup, |mut commands: Commands| {
+            commands.spawn(crate::chunks::Weave);
+        });
         app.add_observer(chunks::create_empty_chunk);
         app.add_observer(chunks::create_terrain_chunk);
     }
@@ -35,12 +38,12 @@ pub fn create_chunk_command(In(arguments): In<String>, mut commands: Commands) {
             commands.trigger(chunks::CreateTerrain(pos));
         }
         6 => {
-            let min = IVec3::new(coords[0], coords[1], coords[2]);
-            let max = IVec3::new(coords[3], coords[4], coords[5]);
+            let min = ivec3(coords[0], coords[1], coords[2]);
+            let max = ivec3(coords[3], coords[4], coords[5]);
             for x in min.x..=max.x {
                 for y in min.y..=max.y {
                     for z in min.z..=max.z {
-                        commands.trigger(chunks::CreateTerrain(IVec3::new(x, y, z)));
+                        commands.trigger(chunks::CreateTerrain(ivec3(x, y, z)));
                     }
                 }
             }
