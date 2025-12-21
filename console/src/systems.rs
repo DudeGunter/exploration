@@ -77,26 +77,23 @@ pub fn spawn_reflected(In(component): In<String>, world: &mut World) {
             })
     };
 
-    let output: String;
-    let output_color: Color;
     if let Some((reflect_component, new_component)) = component_to_insert {
         world.resource_scope(|world, registry: Mut<AppTypeRegistry>| {
             let registry = registry.read();
             let mut entity = world.spawn_empty();
             reflect_component.insert(&mut entity, new_component.as_ref(), &registry);
         });
-        output = format!("Entity {} spawned successfully.", component);
-        output_color = Color::srgb(0.4, 1.0, 0.4);
+        world.trigger(success_message!(
+            "Entity {} spawned successfully.",
+            component
+        ));
     } else {
         // This could be refined to provide more detail potentially
-        output = "DNE or missing ReflectDefault and/or ReflectComponent".to_string();
-        output_color = Color::srgb(1.0, 0.4, 0.4);
+        world.trigger(warning_message!(
+            "Entity {} could not be spawned.",
+            component
+        ));
     }
-
-    world.trigger(crate::protocol::ConsoleMessage {
-        message: output,
-        color: output_color,
-    });
 }
 
 use bevy::reflect::{ReflectMut, serde::ReflectDeserializer};
@@ -105,7 +102,7 @@ use serde::de::DeserializeSeed;
 // This shit is broken heavily btw, I don't think its even possible. fun experiment
 #[allow(unreachable_code, unused_variables)]
 fn set_field(In(arguments): In<String>, world: &mut World) {
-    world.trigger(ConsoleMessage::new(
+    world.trigger(message!(
         "This doesn't work right now! Use the egui world inspector to modify components",
     ));
     return;
@@ -113,7 +110,7 @@ fn set_field(In(arguments): In<String>, world: &mut World) {
     let parts: Vec<&str> = arguments.split_whitespace().collect();
 
     if parts.len() < 3 {
-        world.trigger(ConsoleMessage::new("Usage: <component> <field> <value>"));
+        world.trigger(message!("Usage: <component> <field> <value>"));
         return;
     }
 
@@ -131,10 +128,10 @@ fn set_field(In(arguments): In<String>, world: &mut World) {
     let reflect_component = match reflect_component {
         Some(rc) => rc,
         None => {
-            world.trigger(ConsoleMessage::new(format!(
+            world.trigger(message!(
                 "Component '{}' not found or doesn't support reflection",
                 component_name
-            )));
+            ));
             return;
         }
     };
@@ -170,32 +167,22 @@ fn set_field(In(arguments): In<String>, world: &mut World) {
                                                 println!("DEBUG: Successfully deserialized value");
                                                 // Apply the new value to the field
                                                 field.apply(new_val.as_partial_reflect());
-                                                world.trigger(ConsoleMessage::new(
-                                                    format!("Set {}.{} = {}", component_name, field_name, value)
-                                                ));
+                                                world.trigger(message!("Set {}.{} = {}", component_name, field_name, value));
                                                 found = true;
                                             }
                                             Err(e) => {
                                                 println!("DEBUG: Deserialization error: {:?}", e);
-                                                world.trigger(ConsoleMessage::new(
-                                                    format!("Failed to deserialize value for field '{}': {:?}", field_name, e)
-                                                ));
+                                                world.trigger(message!("Failed to deserialize value for field '{}': {:?}", field_name, e));
                                             }
                                         }
                                     } else {
-                                        world.trigger(ConsoleMessage::new(
-                                            format!("Failed to create RON deserializer")
-                                        ));
+                                        world.trigger(message!("Failed to create RON deserializer"));
                                     }
                                 } else {
-                                    world.trigger(ConsoleMessage::new(
-                                        format!("Field '{}' not found on {}", field_name, component_name)
-                                    ));
+                                    world.trigger(message!("Field '{}' not found on {}", field_name, component_name));
                                 }
                             } else {
-                                world.trigger(ConsoleMessage::new(
-                                    format!("Component '{}' is not a struct", component_name)
-                                ));
+                                world.trigger(message!("Component '{}' is not a struct", component_name));
                             }
                         }
                     }
@@ -208,9 +195,9 @@ fn set_field(In(arguments): In<String>, world: &mut World) {
     }
 
     if !found {
-        world.trigger(ConsoleMessage::new(format!(
+        world.trigger(message!(
             "No entity with component '{}' found",
             component_name
-        )));
+        ));
     }
 }

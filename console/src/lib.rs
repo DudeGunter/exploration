@@ -1,4 +1,4 @@
-use crate::{interface::*, protocol::ConsoleMessage};
+use crate::interface::*;
 use bevy::{ecs::system::SystemId, input_focus::InputFocus, platform::collections::*, prelude::*};
 
 use bevy_ui_text_input::*;
@@ -8,6 +8,8 @@ use lightyear::prelude::*;
 mod interface;
 mod protocol;
 mod systems;
+
+pub use protocol::*;
 
 // Minecraft style text chat to enter in commands like "spawn Player" using reflect potentially
 pub struct ConsolePlugin;
@@ -30,19 +32,6 @@ impl Plugin for ConsolePlugin {
         app.register_message::<protocol::ConsoleMessage>()
             .add_direction(NetworkDirection::Bidirectional);
     }
-}
-
-/// ConsoleMessage wrapper with formatting
-#[macro_export]
-macro_rules! message {
-    ($($arg:tt)*) => {
-        message(&format!($($arg)*))
-    };
-}
-
-/// ConsoleMessage wrapper without formatting
-pub fn message<S: Into<String>>(message: S) -> ConsoleMessage {
-    ConsoleMessage::new(message.into())
 }
 
 pub fn parse_number_arguments<T: std::str::FromStr>(input: &str) -> Vec<T> {
