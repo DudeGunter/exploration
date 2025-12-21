@@ -21,12 +21,6 @@ pub enum Lod {
     Low,    // ~8³ (sample every 4th voxel)
 }
 
-/// The higher the step, the lower resolution, there's probably some limit of some kind
-pub fn construct_custom_mesh_lod(data: &Vec<f32>, step: u32) -> Mesh {
-    let (downsampled, new_size) = downsample_density(data, step);
-    construct_mesh_internal(&downsampled, new_size, step as f32)
-}
-
 pub fn construct_mesh_lod(data: &Vec<f32>, lod: Lod) -> Mesh {
     match lod {
         Lod::High => construct_high_lod_mesh(data),
@@ -58,17 +52,22 @@ fn downsample_density(data: &Vec<f32>, step: u32) -> (Vec<f32>, u32) {
 }
 
 fn construct_high_lod_mesh(data: &Vec<f32>) -> Mesh {
+    // seperate to avoid uneeded downsample computation
     construct_mesh_internal(data, FIELD_SIZE, 1.0)
 }
 
+/// The higher the step, the lower resolution, there's probably some limit of some kind
+pub fn construct_custom_mesh_lod(data: &Vec<f32>, step: u32) -> Mesh {
+    let (downsampled, new_size) = downsample_density(data, step);
+    construct_mesh_internal(&downsampled, new_size, step as f32)
+}
+
 fn construct_medium_lod_mesh(data: &Vec<f32>) -> Mesh {
-    let (downsampled, new_size) = downsample_density(data, 4);
-    construct_mesh_internal(&downsampled, new_size, 2.0)
+    construct_custom_mesh_lod(data, 4)
 }
 
 fn construct_low_lod_mesh(data: &Vec<f32>) -> Mesh {
-    let (downsampled, new_size) = downsample_density(data, 8);
-    construct_mesh_internal(&downsampled, new_size, 8.0)
+    construct_custom_mesh_lod(data, 8)
 }
 
 // Your existing marching cubes logic, parameterized by field size
