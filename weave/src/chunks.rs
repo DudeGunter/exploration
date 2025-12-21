@@ -2,10 +2,7 @@
 // Features:
 // - Create different chunk operations easily
 // - Manage the rate of specific modifications dynamically and defined
-use crate::{
-    mesh::{TerrainMeshMaterial, construct_mesh},
-    terrain::*,
-};
+use crate::{mesh::*, terrain::*};
 use bevy::prelude::*;
 use console::message;
 
@@ -24,12 +21,6 @@ pub struct Weave;
 #[derive(Component)]
 pub struct Chunk {
     pub position: IVec3,
-}
-
-pub enum Lod {
-    Low,
-    Medium,
-    High,
 }
 
 #[derive(Event)]
@@ -79,7 +70,7 @@ pub fn create_terrain_chunk(
                  mut commands: Commands,
                  mut meshes: ResMut<Assets<Mesh>>,
                  material: Res<TerrainMeshMaterial>| {
-                    let mesh = construct_mesh(&trigger.event().data);
+                    let mesh = construct_mesh_lod(&trigger.event().data, Lod::Low);
                     let mesh_handle = meshes.add(mesh);
                     //let collider = Collider::trimesh_from_mesh(&mesh).unwrap();
                     let terrain = commands

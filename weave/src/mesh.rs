@@ -15,16 +15,73 @@ pub fn setup_terrain_mesh_material(
 // Interval: (-1.0, 1.0) maybe... not to good at math ngl
 const ISOLEVEL: f32 = 0.25;
 
-pub fn construct_mesh(data: &Vec<f32>) -> Mesh {
+pub enum Lod {
+    High,   // 32³ full resolution
+    Medium, // ~16³ (sample every 2nd voxel)
+    Low,    // ~8³ (sample every 4th voxel)
+}
+
+/// The higher the step, the lower resolution, there's probably some limit of some kind
+pub fn construct_custom_mesh_lod(data: &Vec<f32>, step: u32) -> Mesh {
+    let (downsampled, new_size) = downsample_density(data, step);
+    construct_mesh_internal(&downsampled, new_size, step as f32)
+}
+
+pub fn construct_mesh_lod(data: &Vec<f32>, lod: Lod) -> Mesh {
+    match lod {
+        Lod::High => construct_high_lod_mesh(data),
+        Lod::Medium => construct_medium_lod_mesh(data),
+        Lod::Low => construct_low_lod_mesh(data),
+    }
+}
+
+fn downsample_density(data: &Vec<f32>, step: u32) -> (Vec<f32>, u32) {
+    let new_size = (FIELD_SIZE + step - 1) / step;
+    let mut downsampled = vec![0.0; (new_size * new_size * new_size) as usize];
+
+    for x in 0..new_size {
+        for y in 0..new_size {
+            for z in 0..new_size {
+                let src_x = (x * step).min(FIELD_SIZE - 1);
+                let src_y = (y * step).min(FIELD_SIZE - 1);
+                let src_z = (z * step).min(FIELD_SIZE - 1);
+
+                let src_idx = src_x + src_y * FIELD_SIZE + src_z * FIELD_SIZE * FIELD_SIZE;
+                let dst_idx = x + y * new_size + z * new_size * new_size;
+
+                downsampled[dst_idx as usize] = data[src_idx as usize];
+            }
+        }
+    }
+
+    (downsampled, new_size)
+}
+
+fn construct_high_lod_mesh(data: &Vec<f32>) -> Mesh {
+    construct_mesh_internal(data, FIELD_SIZE, 1.0)
+}
+
+fn construct_medium_lod_mesh(data: &Vec<f32>) -> Mesh {
+    let (downsampled, new_size) = downsample_density(data, 4);
+    construct_mesh_internal(&downsampled, new_size, 2.0)
+}
+
+fn construct_low_lod_mesh(data: &Vec<f32>) -> Mesh {
+    let (downsampled, new_size) = downsample_density(data, 8);
+    construct_mesh_internal(&downsampled, new_size, 8.0)
+}
+
+// Your existing marching cubes logic, parameterized by field size
+fn construct_mesh_internal(data: &Vec<f32>, field_size: u32, scale: f32) -> Mesh {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
     let mut edge_vertices: HashMap<(u32, u32, u32, u8), u32> = HashMap::new();
 
     let get_density = |x: u32, y: u32, z: u32| -> f32 {
-        if x >= FIELD_SIZE || y >= FIELD_SIZE || z >= FIELD_SIZE {
+        if x >= field_size || y >= field_size || z >= field_size {
             0.0
         } else {
-            data[(x + y * FIELD_SIZE + z * FIELD_SIZE * FIELD_SIZE) as usize]
+            data[(x + y * field_size + z * field_size * field_size) as usize]
         }
     };
 
@@ -42,9 +99,9 @@ pub fn construct_mesh(data: &Vec<f32>) -> Mesh {
         p1 + (p2 - p1) * t
     };
 
-    for x in 0..FIELD_SIZE - 1 {
-        for y in 0..FIELD_SIZE - 1 {
-            for z in 0..FIELD_SIZE - 1 {
+    for x in 0..field_size - 1 {
+        for y in 0..field_size - 1 {
+            for z in 0..field_size - 1 {
                 let corners = [
                     get_density(x, y, z),
                     get_density(x + 1, y, z),
@@ -100,7 +157,7 @@ pub fn construct_mesh(data: &Vec<f32>) -> Mesh {
 
                     for j in 0..3 {
                         let edge_idx = TRI_TABLE[cube_index as usize][i + j] as usize;
-                        let vertex = edge_list[edge_idx];
+                        let vertex = edge_list[edge_idx] * scale;
 
                         let key = (x, y, z, edge_idx as u8);
                         let idx = if let Some(&i) = edge_vertices.get(&key) {
@@ -125,7 +182,7 @@ pub fn construct_mesh(data: &Vec<f32>) -> Mesh {
     )
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
     .with_inserted_indices(Indices::U32(indices))
-    .with_computed_area_weighted_normals() // just guessed abt. whats appropriate here
+    .with_computed_area_weighted_normals()
 }
 
 // =========================================================
