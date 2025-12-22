@@ -103,7 +103,6 @@ pub struct MarchingCubesPipeline {
 
 #[derive(Component)]
 pub struct MeshOutputComponent {
-    pub mesh_output: Handle<ShaderStorageBuffer>,
     pub terrain_entity: Entity,
     pub position: IVec3,
 }
@@ -116,7 +115,7 @@ pub const MAX_VERTS: usize = 65535;
 
 // Mirror of WGSL MeshOutput struct
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(ShaderType, Clone, Copy, Pod, Zeroable)]
 pub struct MeshOutput {
     pub vertices: [MarchVertex; MAX_VERTS],
     pub vertex_count: u32,
@@ -168,14 +167,15 @@ pub fn handle_requests(
     queue.queue.push(job);
 
     // Schedule readback
-    commands.spawn((
-        Readback::buffer(mesh_output_handle.clone()),
-        MeshOutputComponent {
-            mesh_output: mesh_output_handle,
-            terrain_entity,
-            position: coord,
-        },
-    ));
+    commands
+        .spawn((
+            Readback::buffer(mesh_output_handle.clone()),
+            MeshOutputComponent {
+                terrain_entity,
+                position: coord,
+            },
+        ))
+        .observe(on_mesh_readback_complete);
 }
 
 // ============= READBACK HANDLER =============
@@ -184,50 +184,44 @@ pub fn on_mesh_readback_complete(
     trigger: On<ReadbackComplete>,
     mut commands: Commands,
     query: Query<(Entity, &MeshOutputComponent)>,
-    gpu_buffers: Res<RenderAssets<GpuShaderStorageBuffer>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     if let Ok((entity, mesh_comp)) = query.get(trigger.entity) {
-        let mesh_output = &mesh_comp.mesh_output;
+        let mesh_data: &MeshOutput = bytemuck::from_bytes(&trigger.data);
 
-        if let Some(buf) = gpu_buffers.get(mesh_output) {
-            let data = buf.buffer.slice(..).get_mapped_range();
-            let mesh_data: &MeshOutput = bytemuck::from_bytes(&data);
+        let vert_count = mesh_data.vertex_count as usize;
+        let idx_count = mesh_data.index_count as usize;
 
-            let vert_count = mesh_data.vertex_count as usize;
-            let idx_count = mesh_data.index_count as usize;
+        // Only allocate for actual vertices/indices
+        let mut vertices = Vec::with_capacity(vert_count);
+        let mut indices = Vec::with_capacity(idx_count);
 
-            // Only allocate for actual vertices/indices
-            let mut vertices = Vec::with_capacity(vert_count);
-            let mut indices = Vec::with_capacity(idx_count);
-
-            for i in 0..vert_count {
-                let v = mesh_data.vertices[i];
-                vertices.push([v.position.x, v.position.y, v.position.z]);
-            }
-
-            for i in 0..idx_count {
-                indices.push(mesh_data.indices[i]);
-            }
-
-            // Create mesh directly
-            let mesh = Mesh::new(
-                bevy::render::render_resource::PrimitiveTopology::TriangleList,
-                bevy::asset::RenderAssetUsages::default(),
-            )
-            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
-            .with_inserted_indices(bevy::mesh::Indices::U32(indices))
-            .with_computed_area_weighted_normals();
-
-            let mesh_handle = meshes.add(mesh);
-
-            // Spawn mesh entity as child of terrain chunk
-            commands.trigger(RequestComplete {
-                entity: mesh_comp.terrain_entity,
-                position: mesh_comp.position,
-                handle: mesh_handle,
-            });
+        for i in 0..vert_count {
+            let v = mesh_data.vertices[i];
+            vertices.push([v.position.x, v.position.y, v.position.z]);
         }
+
+        for i in 0..idx_count {
+            indices.push(mesh_data.indices[i]);
+        }
+
+        // Create mesh directly
+        let mesh = Mesh::new(
+            bevy::render::render_resource::PrimitiveTopology::TriangleList,
+            bevy::asset::RenderAssetUsages::default(),
+        )
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
+        .with_inserted_indices(bevy::mesh::Indices::U32(indices))
+        .with_computed_area_weighted_normals();
+
+        let mesh_handle = meshes.add(mesh);
+
+        // Spawn mesh entity as child of terrain chunk
+        commands.trigger(RequestComplete {
+            entity: mesh_comp.terrain_entity,
+            position: mesh_comp.position,
+            handle: mesh_handle,
+        });
 
         commands.entity(entity).despawn();
     }
@@ -320,9 +314,9 @@ fn init_pipeline(
                     false,
                     NonZeroU64::new(std::mem::size_of::<NoiseParams>() as u64),
                 ),
-                storage_buffer_sized(
+                storage_buffer::<MeshOutput>(
                     false,
-                    NonZeroU64::new(std::mem::size_of::<MeshOutput>() as u64),
+                    //NonZeroU64::new(std::mem::size_of::<MeshOutput>() as u64),
                 ),
             ),
         ),
@@ -344,8 +338,6 @@ pub fn plugin(app: &mut App) {
 
     app.add_plugins(ExtractResourcePlugin::<MarchingCubesQueue>::default());
     app.insert_resource(MarchingCubesQueue { queue: Vec::new() });
-
-    app.add_observer(on_mesh_readback_complete);
 
     let render_app = app.get_sub_app_mut(RenderApp).unwrap();
     render_app.add_systems(RenderStartup, (init_pipeline, add_marching_cubes_node));
