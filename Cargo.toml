@@ -6,7 +6,6 @@ members = [
     "explore",
     "networking",
     "portal",
-    "voxel_terrain",
     "weave",
 ]
 resolver = "3"
@@ -77,9 +76,6 @@ features = [
     "max_level_debug",
     "release_max_level_warn",
 ]
-
-[workspace.dependencies.voxel_terrain]
-path = "voxel_terrain"
 
 [workspace.dependencies.weave]
 path = "weave"
