@@ -70,7 +70,7 @@ fn perlin_noise(p: vec3<f32>) -> f32 {
 }
 
 // Fractal Brownian Motion (FBM) - sum of multiple noise octaves
-fn fbm(p: vec3<f32>, octaves: u32) -> f32 {
+fn fbm_3d(p: vec3<f32>, octaves: u32) -> f32 {
     var value = 0.0;
     var amplitude = 1.0;
     var frequency = 1.0;
@@ -84,6 +84,66 @@ fn fbm(p: vec3<f32>, octaves: u32) -> f32 {
     }
 
     return value / max_value;
+}
+
+fn perlin_noise_2d(p: vec2<f32>) -> f32 {
+    let pi = floor(p);
+    let pf = fract(p);
+
+    let w = vec2<f32>(
+        smoothstep(pf.x),
+        smoothstep(pf.y)
+    );
+
+    // Only 4 corners (not 8)
+    let c00 = hash(vec3<f32>(pi.x, pi.y, 0.0));
+    let c10 = hash(vec3<f32>(pi.x + 1.0, pi.y, 0.0));
+    let c01 = hash(vec3<f32>(pi.x, pi.y + 1.0, 0.0));
+    let c11 = hash(vec3<f32>(pi.x + 1.0, pi.y + 1.0, 0.0));
+
+    let c0 = mix(c00, c10, w.x);
+    let c1 = mix(c01, c11, w.x);
+
+    return mix(c0, c1, w.y);
+}
+
+fn fbm_2d(p: vec2<f32>, octaves: u32) -> f32 {
+    var value = 0.0;
+    var amplitude = 1.0;
+    var frequency = 1.0;
+    var max_value = 0.0;
+
+    for (var i = 0u; i < octaves; i = i + 1u) {
+        value = value + amplitude * perlin_noise_2d(p * frequency);
+        max_value = max_value + amplitude;
+        amplitude = amplitude * 0.5;
+        frequency = frequency * 2.0;
+    }
+
+    return value / max_value;
+}
+
+fn surface_noise(p: vec3<f32>) -> f32 {
+    // Only X and Z, using 2D noise
+    return fbm_2d(vec2<f32>(p.x, p.z), 20u);
+}
+
+// CAVE NOISE - full 3D variation
+fn cave_noise(p: vec3<f32>) -> f32 {
+    return fbm_3d(p, params.octaves);  // All dimensions matter equally
+}
+
+// BLEND based on HEIGHT
+fn final_noise(p: vec3<f32>) -> f32 {
+    let surface_height = surface_noise(p);
+    let caves = cave_noise(p);
+
+    if p.y > (surface_height - p.y) {
+        return surface_height - p.y + 1.3;
+    } else {
+        // Underground: caves modify the surface
+        return caves;  // Caves carve into surface
+    }
 }
 
 @compute @workgroup_size(4, 4, 4)
@@ -101,7 +161,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     ) * params.scale;
 
     // Generate noise value using FBM (returns [0, 1])
-    let noise_value = fbm(world_pos * params.frequency, params.octaves);
+    //let noise_value = fbm(world_pos * params.frequency, params.octaves);
+    let noise_value = final_noise(world_pos * params.frequency);
 
     // Shift from [0, 1] to [-1, 1], then scale by amplitude
     let density = (noise_value * 2.0 - 1.0) * params.amplitude;

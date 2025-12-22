@@ -8,9 +8,6 @@ use console::message;
 
 pub const CHUNK_SIZE: u32 = 64;
 
-#[derive(Component)]
-pub struct RenderDistance(pub u32);
-
 // Container for chunks/world
 #[derive(Component, Reflect)]
 #[require(Name::new("Weave"), Transform, Visibility::Visible)]
@@ -47,7 +44,19 @@ pub fn create_empty_chunk(
 }
 
 #[derive(Event, Copy, Clone)]
-pub struct CreateTerrain(pub IVec3);
+pub struct CreateTerrain {
+    pub position: IVec3,
+    pub lod: Lod,
+}
+
+impl CreateTerrain {
+    pub fn new(position: IVec3) -> Self {
+        Self {
+            position,
+            lod: Lod::High,
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct TerrainMesh;
@@ -58,19 +67,23 @@ pub fn create_terrain_chunk(
     chunks: Query<(Entity, &Chunk)>,
     terrain_meshes: Query<&ChildOf, With<TerrainMesh>>,
 ) {
-    if let Some((entity, chunk)) = chunks.iter().find(|(_, chunk)| chunk.position == trigger.0) {
+    if let Some((entity, chunk)) = chunks
+        .iter()
+        .find(|(_, chunk)| chunk.position == trigger.position)
+    {
         if !terrain_meshes.iter().any(|mesh| mesh.0 == entity) {
             commands.trigger(message!("Creating Terrain Mesh"));
             commands.trigger(crate::terrain::RequestNoise {
                 entity,
                 position: chunk.position,
             });
+            let lod = trigger.event().lod;
             commands.entity(entity).observe(
-                |trigger: On<RequestComplete>,
-                 mut commands: Commands,
-                 mut meshes: ResMut<Assets<Mesh>>,
-                 material: Res<TerrainMeshMaterial>| {
-                    let mesh = construct_mesh_lod(&trigger.event().data, Lod::Low);
+                move |trigger: On<RequestComplete>,
+                      mut commands: Commands,
+                      mut meshes: ResMut<Assets<Mesh>>,
+                      material: Res<TerrainMeshMaterial>| {
+                    let mesh = construct_mesh_lod(&trigger.event().data, lod);
                     let mesh_handle = meshes.add(mesh);
                     //let collider = Collider::trimesh_from_mesh(&mesh).unwrap();
                     let terrain = commands
@@ -91,7 +104,7 @@ pub fn create_terrain_chunk(
         }
     } else {
         commands.trigger(message!("Chunk doesn't exist! Creating chunk."));
-        commands.trigger(CreateEmpty(trigger.0));
-        commands.trigger(CreateTerrain(trigger.0));
+        commands.trigger(CreateEmpty(trigger.position));
+        commands.trigger(*trigger.event());
     }
 }

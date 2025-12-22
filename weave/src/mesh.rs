@@ -13,8 +13,9 @@ pub fn setup_terrain_mesh_material(
 }
 
 // Interval: (-1.0, 1.0) maybe... not to good at math ngl
-const ISOLEVEL: f32 = 0.25;
+const ISOLEVEL: f32 = -0.25;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 pub enum Lod {
     High,   // 32³ full resolution
     Medium, // ~16³ (sample every 2nd voxel)
