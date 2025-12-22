@@ -3116,7 +3116,6 @@ dependencies = [
  "console",
  "log",
  "networking",
- "noiz",
  "portal",
  "tracing",
  "voxel_terrain",
@@ -5310,17 +5309,6 @@ name = "nohash-hasher"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
-
-[[package]]
-name = "noiz"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b823103555ff41d5aefbc6e07440c671fdf63c79696eccd38ef725e976fd9d30"
-dependencies = [
- "bevy_math",
- "bevy_reflect",
- "serde",
-]
 
 [[package]]
 name = "nom"
@@ -7915,7 +7903,6 @@ dependencies = [
  "avian3d",
  "bevy",
  "log",
- "noiz",
  "tracing",
 ]
 
@@ -8119,7 +8106,6 @@ dependencies = [
  "bytemuck",
  "console",
  "log",
- "noiz",
  "tracing",
 ]
 

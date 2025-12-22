@@ -6,10 +6,9 @@
 // Png Textures,
 // 3d option?/more noise
 //
-
+/*
 use bevy::prelude::*;
 use manager::*;
-
 mod chunk;
 mod manager;
 mod terrain;
@@ -45,3 +44,4 @@ pub mod prelude {
     pub use crate::manager::{AreaManaged, Observer};
     pub use crate::terrain::{TerrainMaterial, VoxelTerrain};
 }
+*/

@@ -12,9 +12,7 @@ members = [
 resolver = "3"
 
 [workspace.dependencies]
-bevy_hui = "0.5"
 leafwing-input-manager = "0.19"
-noiz = "0.3"
 ron = "0.12"
 serde = "1.0"
 
