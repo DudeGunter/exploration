@@ -26,12 +26,21 @@ impl Plugin for WeavePlugin {
         app.add_systems(Startup, add_commands); // so I can use a command to change the state
         app.add_systems(
             Startup,
-            (mesh::setup_terrain_mesh_material, spawn_weave).in_set(WeaveSets::Init),
+            (
+                mesh::setup_terrain_mesh_material,
+                spawn_weave,
+                mesh::setup_channel,
+            )
+                .in_set(WeaveSets::Init),
         );
         app.add_systems(PreUpdate, terrain::clear_queue.in_set(WeaveSets::PreUpdate));
         app.add_systems(
             Update,
-            render_distance::manage_render_distance_terrain_spawning.in_set(WeaveSets::Update),
+            (
+                render_distance::manage_render_distance_terrain_spawning,
+                mesh::handle_received_mesh,
+            )
+                .in_set(WeaveSets::Update),
         );
 
         // Field compute, there's seperate plugin because the the render node edits
@@ -42,6 +51,7 @@ impl Plugin for WeavePlugin {
         app.add_observer(terrain::handle_requests);
         app.add_observer(chunks::create_empty_chunk);
         app.add_observer(chunks::create_terrain_chunk);
+        app.add_observer(chunks::compute_terrain_mesh);
     }
 }
 

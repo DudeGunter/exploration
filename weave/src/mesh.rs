@@ -1,5 +1,6 @@
 use crate::terrain::*;
-use bevy::{mesh::Indices, platform::collections::HashMap};
+use bevy::{mesh::Indices, platform::collections::HashMap, prelude::*};
+use crossbeam_channel::{Receiver, Sender, unbounded};
 
 #[derive(Resource, Clone, Reflect)]
 pub struct TerrainMeshMaterial(pub Handle<StandardMaterial>);
@@ -12,6 +13,37 @@ pub fn setup_terrain_mesh_material(
     commands.insert_resource(TerrainMeshMaterial(material));
 }
 
+pub struct MeshComputed(pub (Entity, Mesh));
+
+#[derive(Resource)]
+pub struct MeshComputeChannel {
+    pub sender: Sender<MeshComputed>,
+    pub receiver: Receiver<MeshComputed>,
+}
+
+#[derive(EntityEvent)]
+pub struct MeshTaskCompleted {
+    pub entity: Entity,
+    pub mesh: Handle<Mesh>,
+}
+
+pub fn setup_channel(mut commands: Commands) {
+    let (sender, receiver) = unbounded();
+    commands.insert_resource(MeshComputeChannel { sender, receiver });
+}
+
+pub fn handle_received_mesh(
+    mut commands: Commands,
+    channel: Res<MeshComputeChannel>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    while let Ok(mesh) = channel.receiver.try_recv() {
+        let (entity, mesh) = mesh.0;
+        let mesh = meshes.add(mesh);
+        commands.trigger(MeshTaskCompleted { entity, mesh })
+    }
+}
+
 // Interval: (-1.0, 1.0) maybe... not to good at math ngl
 const ISOLEVEL: f32 = -0.25;
 
@@ -22,11 +54,11 @@ pub enum Lod {
     Low,    // ~8³ (sample every 4th voxel)
 }
 
-pub fn construct_mesh_lod(data: &Vec<f32>, lod: Lod) -> Mesh {
+pub fn construct_mesh_lod(data: Vec<f32>, lod: Lod) -> Mesh {
     match lod {
-        Lod::High => construct_high_lod_mesh(data),
-        Lod::Medium => construct_medium_lod_mesh(data),
-        Lod::Low => construct_low_lod_mesh(data),
+        Lod::High => construct_mesh_internal(&data, FIELD_SIZE, 1.0),
+        Lod::Medium => construct_custom_mesh_lod(&data, 4),
+        Lod::Low => construct_custom_mesh_lod(&data, 8),
     }
 }
 
@@ -52,23 +84,10 @@ fn downsample_density(data: &Vec<f32>, step: u32) -> (Vec<f32>, u32) {
     (downsampled, new_size)
 }
 
-fn construct_high_lod_mesh(data: &Vec<f32>) -> Mesh {
-    // seperate to avoid uneeded downsample computation
-    construct_mesh_internal(data, FIELD_SIZE, 1.0)
-}
-
 /// The higher the step, the lower resolution, there's probably some limit of some kind
 pub fn construct_custom_mesh_lod(data: &Vec<f32>, step: u32) -> Mesh {
     let (downsampled, new_size) = downsample_density(data, step);
     construct_mesh_internal(&downsampled, new_size, step as f32)
-}
-
-fn construct_medium_lod_mesh(data: &Vec<f32>) -> Mesh {
-    construct_custom_mesh_lod(data, 4)
-}
-
-fn construct_low_lod_mesh(data: &Vec<f32>) -> Mesh {
-    construct_custom_mesh_lod(data, 8)
 }
 
 // Your existing marching cubes logic, parameterized by field size
@@ -86,17 +105,8 @@ fn construct_mesh_internal(data: &Vec<f32>, field_size: u32, scale: f32) -> Mesh
     };
 
     let interpolate = |p1: Vec3, v1: f32, p2: Vec3, v2: f32| -> Vec3 {
-        if (ISOLEVEL - v1).abs() < 0.0001 {
-            return p1;
-        }
-        if (ISOLEVEL - v2).abs() < 0.0001 {
-            return p2;
-        }
-        if (v1 - v2).abs() < 0.0001 {
-            return p1;
-        }
         let t = (ISOLEVEL - v1) / (v2 - v1);
-        p1 + (p2 - p1) * t
+        p1.lerp(p2, t)
     };
 
     for x in 0..field_size - 1 {

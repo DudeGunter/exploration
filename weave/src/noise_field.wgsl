@@ -22,12 +22,8 @@ const FIELD_SIZE: u32 = 65u; // CHUNK_SIZE + 1
 
 // Simple hash function for pseudo-random values
 fn hash(v: vec3<f32>) -> f32 {
-    let p = vec3<f32>(
-        dot(v, vec3<f32>(127.1, 311.7, 74.7)),
-        dot(v, vec3<f32>(269.5, 183.3, 246.1)),
-        dot(v, vec3<f32>(113.5, 271.9, 124.6))
-    );
-    return fract(sin(p.x) * 43758.5453123 + sin(p.y) * 12345.6789 + sin(p.z) * 98765.4321);
+    let h = dot(v, vec3<f32>(127.1, 311.7, 74.7));
+    return fract(sin(h) * 43758.5453123);
 }
 
 // Smoothstep interpolation (Hermite curve)
@@ -125,7 +121,7 @@ fn fbm_2d(p: vec2<f32>, octaves: u32) -> f32 {
 
 fn surface_noise(p: vec3<f32>) -> f32 {
     // Only X and Z, using 2D noise
-    return fbm_2d(vec2<f32>(p.x, p.z), 20u);
+    return fbm_2d(vec2<f32>(p.x, p.z), 4u);
 }
 
 // CAVE NOISE - full 3D variation
@@ -137,13 +133,10 @@ fn cave_noise(p: vec3<f32>) -> f32 {
 fn final_noise(p: vec3<f32>) -> f32 {
     let surface_height = surface_noise(p);
     let caves = cave_noise(p);
+    let depth = surface_height - p.y;
+    let use_surface = f32(p.y > depth);
 
-    if p.y > (surface_height - p.y) {
-        return surface_height - p.y + 1.3;
-    } else {
-        // Underground: caves modify the surface
-        return caves;  // Caves carve into surface
-    }
+    return mix(caves, depth + 1.3, use_surface);
 }
 
 @compute @workgroup_size(4, 4, 4)

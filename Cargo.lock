@@ -8094,6 +8094,7 @@ dependencies = [
  "bevy",
  "bytemuck",
  "console",
+ "crossbeam-channel",
  "log",
  "tracing",
 ]
