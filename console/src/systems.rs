@@ -9,8 +9,9 @@ pub fn default_commands(mut console_config: ResMut<ConsoleConfig>) {
         },
         help,
     );
+    // Example
     console_config.insert_command("67", |_: In<String>, mut commands: Commands| {
-        commands.trigger(ConsoleMessage::new("67"))
+        commands.trigger(message!("67"))
     });
     console_config.insert_command("spawn", spawn_reflected);
     console_config.insert_command_with_metadata(
