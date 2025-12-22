@@ -29,30 +29,43 @@ pub fn default_commands(mut console_config: ResMut<ConsoleConfig>) {
         },
         clear,
     );
+    console_config.insert_command_with_metadata(
+        "quit",
+        CommandMetadata {
+            description: "Quit the application".to_string(),
+            usage: "quit".to_string(),
+        },
+        quit,
+    );
 }
 
 pub fn help(In(argument): In<String>, console_config: Res<ConsoleConfig>, mut commands: Commands) {
+    let prefix = console_config.prefix;
     if argument.is_empty() {
         for command in console_config.get_commands() {
             match console_config.get_metadata(command) {
                 Some(metadata) => {
-                    commands.trigger(message!("Command: {}", command));
-                    commands.trigger(message!("   ->Description: {}", metadata.description));
-                    commands.trigger(message!("   ->Usage: {}", metadata.usage));
+                    commands.trigger(message!("{}{}", prefix, command));
+                    commands.trigger(message!("   >Description: {}", metadata.description));
+                    commands.trigger(message!("   >Usage: {}", metadata.usage));
                 }
-                None => (),
+                None => commands.trigger(message!("{}{}", prefix, command)),
             }
         }
     } else {
         match console_config.get_metadata(argument.clone()) {
             Some(metadata) => {
-                commands.trigger(message!("Command: {}", argument));
-                commands.trigger(message!("   ->Description: {}", metadata.description));
-                commands.trigger(message!("   ->Usage: {}", metadata.usage));
+                commands.trigger(message!("{}{}", prefix, argument));
+                commands.trigger(message!("   >Description: {}", metadata.description));
+                commands.trigger(message!("   >Usage: {}", metadata.usage));
             }
-            None => commands.trigger(message(format!("Command not found: {}", argument))),
+            None => commands.trigger(message!("Command not found: {}", argument)),
         }
     }
+}
+
+pub fn quit(In(_): In<String>, mut exit: MessageWriter<AppExit>) {
+    exit.write(AppExit::Success);
 }
 
 pub fn clear(

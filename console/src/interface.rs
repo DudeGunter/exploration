@@ -12,6 +12,7 @@ pub struct ConsoleCommandLine;
 pub struct ConsoleMessageContainer;
 
 pub fn spawn_console(mut cmds: Commands) {
+    let font_size = 12.0;
     cmds.spawn((
         Name::new("Console"),
         Console,
@@ -28,13 +29,17 @@ pub fn spawn_console(mut cmds: Commands) {
                 ConsoleCommandLine,
                 Node {
                     width: percent(100),
-                    height: px(24),
+                    height: px(font_size + 4 as f32),
                     ..default()
                 },
                 TextInputNode {
                     mode: TextInputMode::SingleLine,
                     clear_on_submit: true,
                     is_enabled: false,
+                    ..default()
+                },
+                TextFont {
+                    font_size,
                     ..default()
                 },
                 BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
@@ -54,14 +59,19 @@ pub fn spawn_console(mut cmds: Commands) {
 }
 
 pub fn console_output(text: String) -> impl Bundle {
+    let font_size = 12.0;
     (
         Name::new(format!("Message: {text}")),
         Node {
-            min_height: px(24),
+            min_height: px(font_size),
             ..default()
         },
         // Removed for now, visual bug can be simply fixed but I think this looks cleaner generally
         //BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
         Text::new(text),
+        TextFont {
+            font_size,
+            ..default()
+        },
     )
 }
