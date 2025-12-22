@@ -2,8 +2,8 @@
 // Features:
 // - Create different chunk operations easily
 // - Manage the rate of specific modifications dynamically and defined
-use crate::{mesh::*, terrain::*};
-use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
+use crate::{marching_cubes::*, *};
+//use bevy::prelude::*;
 use console::message;
 
 pub const CHUNK_SIZE: u32 = 64;
@@ -18,6 +18,13 @@ pub struct Weave;
 #[derive(Component)]
 pub struct Chunk {
     pub position: IVec3,
+}
+
+#[derive(Copy, Clone)]
+pub enum Lod {
+    Low,
+    Medium,
+    High,
 }
 
 #[derive(Event)]
@@ -59,13 +66,13 @@ impl CreateTerrain {
 }
 
 #[derive(Component)]
-pub struct TerrainData(Vec<f32>);
+pub struct TerrainMesh;
 
 pub fn create_terrain_chunk(
     trigger: On<CreateTerrain>,
     mut commands: Commands,
     chunks: Query<(Entity, &Chunk)>,
-    terrain_meshes: Query<&ChildOf, With<TerrainData>>,
+    terrain_meshes: Query<&ChildOf, With<TerrainMesh>>,
 ) {
     if let Some((entity, chunk)) = chunks
         .iter()
@@ -73,29 +80,24 @@ pub fn create_terrain_chunk(
     {
         if !terrain_meshes.iter().any(|mesh| mesh.0 == entity) {
             commands.trigger(message!("Creating Terrain Mesh"));
-            commands.trigger(crate::terrain::RequestNoise {
+            commands.trigger(RequestNoise {
                 entity,
                 position: chunk.position,
             });
-            let lod = trigger.event().lod;
+            let _lod = trigger.event().lod;
             commands.entity(entity).observe(
                 move |trigger: On<RequestComplete>,
                       mut commands: Commands,
-
                       material: Res<TerrainMeshMaterial>| {
-                    let terrain_entity = commands
+                    let terrain = commands
                         .spawn((
                             Name::new("Terrain Mesh"),
-                            TerrainData(trigger.data.clone()),
+                            TerrainMesh,
+                            Mesh3d(trigger.handle.clone()),
                             MeshMaterial3d(material.0.clone()),
                         ))
                         .id();
-                    commands.entity(trigger.entity).add_child(terrain_entity);
-                    commands.trigger(ComputeTerrainMesh { entity, lod });
-
-                    //let mesh = construct_mesh_lod(&trigger.event().data, lod);
-                    //let mesh_handle = meshes.add(mesh);
-                    //let collider = Collider::trimesh_from_mesh(&mesh).unwrap();
+                    commands.entity(entity).add_child(terrain);
                 },
             );
         } else {
@@ -105,42 +107,5 @@ pub fn create_terrain_chunk(
         commands.trigger(message!("Chunk doesn't exist! Creating chunk."));
         commands.trigger(CreateEmpty(trigger.position));
         commands.trigger(*trigger.event());
-    }
-}
-
-#[derive(EntityEvent)]
-pub struct ComputeTerrainMesh {
-    entity: Entity,
-    lod: Lod,
-}
-
-pub fn compute_terrain_mesh(
-    trigger: On<ComputeTerrainMesh>,
-    mut commands: Commands,
-    channel: Res<MeshComputeChannel>,
-    fields: Query<&TerrainData>,
-) {
-    if let Ok(data) = fields.get(trigger.entity) {
-        let data = data.0.clone();
-        let thread_pool = AsyncComputeTaskPool::get();
-        let lod = trigger.lod.clone();
-        let sender = channel.sender.clone();
-        let terrain_entity = trigger.entity;
-        thread_pool
-            .spawn(async move {
-                sender.send(MeshComputed((
-                    terrain_entity,
-                    construct_mesh_lod(data, lod),
-                )))
-            })
-            .detach();
-
-        commands.entity(terrain_entity).observe(
-            move |trigger: On<MeshTaskCompleted>, mut commands: Commands| {
-                commands
-                    .entity(terrain_entity)
-                    .insert(Mesh3d(trigger.event().mesh.clone()));
-            },
-        );
     }
 }

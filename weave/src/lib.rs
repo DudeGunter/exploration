@@ -2,9 +2,10 @@ use bevy::prelude::*;
 use console::*;
 
 pub mod chunks;
-pub mod mesh;
+pub mod marching_cubes;
+//pub mod mesh;
 pub mod render_distance;
-pub mod terrain;
+//pub mod terrain;
 
 pub struct WeavePlugin;
 
@@ -26,33 +27,37 @@ impl Plugin for WeavePlugin {
         app.add_systems(Startup, add_commands); // so I can use a command to change the state
         app.add_systems(
             Startup,
-            (
-                mesh::setup_terrain_mesh_material,
-                spawn_weave,
-                mesh::setup_channel,
-            )
-                .in_set(WeaveSets::Init),
+            (setup_terrain_mesh_material, spawn_weave).in_set(WeaveSets::Init),
         );
-        app.add_systems(PreUpdate, terrain::clear_queue.in_set(WeaveSets::PreUpdate));
+        app.add_systems(
+            PreUpdate,
+            marching_cubes::clear_queue.in_set(WeaveSets::PreUpdate),
+        );
         app.add_systems(
             Update,
-            (
-                render_distance::manage_render_distance_terrain_spawning,
-                mesh::handle_received_mesh,
-            )
-                .in_set(WeaveSets::Update),
+            (render_distance::manage_render_distance_terrain_spawning,).in_set(WeaveSets::Update),
         );
 
         // Field compute, there's seperate plugin because the the render node edits
-        app.add_plugins(terrain::plugin);
-        app.insert_resource(terrain::TerrainNoiseParams::default());
+        app.add_plugins(marching_cubes::plugin);
+        app.insert_resource(marching_cubes::TerrainNoiseParams::default());
 
         // Observers
-        app.add_observer(terrain::handle_requests);
+        app.add_observer(marching_cubes::handle_requests);
         app.add_observer(chunks::create_empty_chunk);
         app.add_observer(chunks::create_terrain_chunk);
-        app.add_observer(chunks::compute_terrain_mesh);
     }
+}
+
+#[derive(Resource, Clone, Reflect)]
+pub struct TerrainMeshMaterial(pub Handle<StandardMaterial>);
+
+pub fn setup_terrain_mesh_material(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let material = materials.add(StandardMaterial::from_color(Color::srgb(0.3, 0.9, 0.5)));
+    commands.insert_resource(TerrainMeshMaterial(material));
 }
 
 // Managing sets and states
