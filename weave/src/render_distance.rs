@@ -7,6 +7,7 @@ pub struct RenderDistance(pub i32);
 pub fn manage_render_distance_terrain_spawning(
     mut commands: Commands,
     query: Query<(&RenderDistance, &GlobalTransform)>,
+    chunks: Query<&Chunk>,
 ) {
     for (distance, transform) in query {
         let chunk_position = (transform.translation() / Vec3::splat(CHUNK_SIZE as f32))
@@ -16,7 +17,9 @@ pub fn manage_render_distance_terrain_spawning(
             for y in -distance.0 as i32..=distance.0 as i32 {
                 for z in -distance.0 as i32..=distance.0 as i32 {
                     let chunk_position = chunk_position + IVec3::new(x, y, z);
-                    commands.trigger(CreateTerrain::new(chunk_position));
+                    if !chunks.iter().any(|chunk| chunk.position == chunk_position) {
+                        commands.trigger(CreateTerrain::new(chunk_position));
+                    }
                 }
             }
         }

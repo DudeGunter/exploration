@@ -10,6 +10,8 @@ pub struct WeavePlugin;
 
 impl Plugin for WeavePlugin {
     fn build(&self, app: &mut App) {
+        // Configuration
+        app.init_state::<WeaveStates>();
         app.configure_sets(OnEnter(WeaveStates::Init), WeaveSets::Init);
         app.configure_sets(
             PreUpdate,
@@ -20,25 +22,26 @@ impl Plugin for WeavePlugin {
             WeaveSets::Update.run_if(in_state(WeaveStates::Update)),
         );
 
+        // Systems
+        app.add_systems(Startup, add_commands); // so I can use a command to change the state
         app.add_systems(
             Startup,
-            (add_commands, mesh::setup_terrain_mesh_material, spawn_weave).in_set(WeaveSets::Init),
+            (mesh::setup_terrain_mesh_material, spawn_weave).in_set(WeaveSets::Init),
         );
-        // Field compute, there's seperate plugin because the the render node edits
-        app.add_plugins(terrain::plugin);
-        app.insert_resource(terrain::TerrainNoiseParams::default());
         app.add_systems(PreUpdate, terrain::clear_queue.in_set(WeaveSets::PreUpdate));
-        app.add_observer(terrain::handle_requests);
-
-        // Chunk
-        app.add_observer(chunks::create_empty_chunk);
-        app.add_observer(chunks::create_terrain_chunk);
-
-        // Render distance
         app.add_systems(
             Update,
             render_distance::manage_render_distance_terrain_spawning.in_set(WeaveSets::Update),
         );
+
+        // Field compute, there's seperate plugin because the the render node edits
+        app.add_plugins(terrain::plugin);
+        app.insert_resource(terrain::TerrainNoiseParams::default());
+
+        // Observers
+        app.add_observer(terrain::handle_requests);
+        app.add_observer(chunks::create_empty_chunk);
+        app.add_observer(chunks::create_terrain_chunk);
     }
 }
 
@@ -66,6 +69,13 @@ pub fn spawn_weave(mut commands: Commands) {
 // Console implementations
 pub fn add_commands(mut console_config: ResMut<ConsoleConfig>) {
     console_config.insert_command("create_chunk", create_chunk_command);
+    console_config.insert_command(
+        "start_weave",
+        |In(_): In<String>, mut commands: Commands, mut next: ResMut<NextState<WeaveStates>>| {
+            next.set(WeaveStates::Update);
+            commands.trigger(success_message!("Successfully changed state to Update"));
+        },
+    );
 }
 
 pub fn create_chunk_command(In(arguments): In<String>, mut commands: Commands) {

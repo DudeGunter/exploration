@@ -35,6 +35,7 @@ fn setup(mut commands: Commands) {
     commands.trigger(Host::default());
     commands.spawn((
         FlyCam,
+        weave::render_distance::RenderDistance(3),
         //Observer,
         //AreaManaged::Circle(25.0),
         //weave::area::Observer,
