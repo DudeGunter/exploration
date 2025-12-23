@@ -43,30 +43,35 @@ fn hash(v: vec3<f32>) -> f32 {
 fn smoothstep(t: f32) -> f32 {
     return t * t * (3.0 - 2.0 * t);
 }
+// A robust 3D hash that doesn't rely on sin()
+fn hash33(p: vec3<f32>) -> vec3<f32> {
+    var p3 = fract(p * vec3<f32>(0.1031, 0.1030, 0.0973));
+    p3 += dot(p3, p3.yxz + 33.33);
+    return fract((p3.xxy + p3.yxx) * p3.zyx) * 2.0 - 1.0;
+}
 
 fn perlin_noise(p: vec3<f32>) -> f32 {
     let pi = floor(p);
     let pf = fract(p);
 
-    let w = vec3<f32>(
-        smoothstep(pf.x),
-        smoothstep(pf.y),
-        smoothstep(pf.z)
-    );
+    // Fade curve (smoother than smoothstep)
+    let w = pf * pf * pf * (pf * (pf * 6.0 - 15.0) + 10.0);
 
-    let c000 = hash(pi + vec3<f32>(0.0, 0.0, 0.0));
-    let c100 = hash(pi + vec3<f32>(1.0, 0.0, 0.0));
-    let c010 = hash(pi + vec3<f32>(0.0, 1.0, 0.0));
-    let c110 = hash(pi + vec3<f32>(1.0, 1.0, 0.0));
-    let c001 = hash(pi + vec3<f32>(0.0, 0.0, 1.0));
-    let c101 = hash(pi + vec3<f32>(1.0, 0.0, 1.0));
-    let c011 = hash(pi + vec3<f32>(0.0, 1.0, 1.0));
-    let c111 = hash(pi + vec3<f32>(1.0, 1.0, 1.0));
+    // Gradients at 8 corners
+    let g000 = dot(hash33(pi + vec3<f32>(0.0, 0.0, 0.0)), pf - vec3<f32>(0.0, 0.0, 0.0));
+    let g100 = dot(hash33(pi + vec3<f32>(1.0, 0.0, 0.0)), pf - vec3<f32>(1.0, 0.0, 0.0));
+    let g010 = dot(hash33(pi + vec3<f32>(0.0, 1.0, 0.0)), pf - vec3<f32>(0.0, 1.0, 0.0));
+    let g110 = dot(hash33(pi + vec3<f32>(1.0, 1.0, 0.0)), pf - vec3<f32>(1.0, 1.0, 0.0));
+    let g001 = dot(hash33(pi + vec3<f32>(0.0, 0.0, 1.0)), pf - vec3<f32>(0.0, 0.0, 1.0));
+    let g101 = dot(hash33(pi + vec3<f32>(1.0, 0.0, 1.0)), pf - vec3<f32>(1.0, 0.0, 1.0));
+    let g011 = dot(hash33(pi + vec3<f32>(0.0, 1.0, 1.0)), pf - vec3<f32>(0.0, 1.0, 1.0));
+    let g111 = dot(hash33(pi + vec3<f32>(1.0, 1.0, 1.0)), pf - vec3<f32>(1.0, 1.0, 1.0));
 
-    let c00 = mix(c000, c100, w.x);
-    let c10 = mix(c010, c110, w.x);
-    let c01 = mix(c001, c101, w.x);
-    let c11 = mix(c011, c111, w.x);
+    // Interpolation
+    let c00 = mix(g000, g100, w.x);
+    let c10 = mix(g010, g110, w.x);
+    let c01 = mix(g001, g101, w.x);
+    let c11 = mix(g011, g111, w.x);
 
     let c0 = mix(c00, c10, w.y);
     let c1 = mix(c01, c11, w.y);
@@ -135,32 +140,29 @@ fn cave_noise(p: vec3<f32>) -> f32 {
 }
 
 fn final_noise(p: vec3<f32>) -> f32 {
-    let surface_height = surface_noise(p);
-    let caves = cave_noise(p);
-    let depth = surface_height - p.y;
-    let use_surface = f32(p.y > depth);
-
-    return mix(caves, depth + 1.3, use_surface);
+    // Pure 3D Perlin noise for proper scalar field
+    return fbm_3d(p, params.octaves);
 }
 
 const MAX_VERTS: u32 = 65535u;
 
 // ============= HELPER FUNCTIONS =============
 
-fn add_vertex(pos: vec3<f32>) -> u32 {
-    let idx = atomicAdd(&mesh_output.vertex_count, 1);
-    if idx < 65535 {
-        mesh_output.vertices[idx] = MarchVertex(pos);
-    }
-    return idx;
-}
-
-fn add_triangle(i0: u32, i1: u32, i2: u32) {
-    let start = atomicAdd(&mesh_output.index_count, 3);
-    if start + 2 < 65535 {
-        mesh_output.indices[start] = i0;
-        mesh_output.indices[start + 1] = i1;
-        mesh_output.indices[start + 2] = i2;
+fn edge_endpoints(edge: u32) -> vec2<u32> {
+    switch(edge) {
+        case 0u:  { return vec2<u32>(0u, 1u); }
+        case 1u:  { return vec2<u32>(1u, 2u); }
+        case 2u:  { return vec2<u32>(2u, 3u); }
+        case 3u:  { return vec2<u32>(3u, 0u); }
+        case 4u:  { return vec2<u32>(4u, 5u); }
+        case 5u:  { return vec2<u32>(5u, 6u); }
+        case 6u:  { return vec2<u32>(6u, 7u); }
+        case 7u:  { return vec2<u32>(7u, 4u); }
+        case 8u:  { return vec2<u32>(0u, 4u); }
+        case 9u:  { return vec2<u32>(1u, 5u); }
+        case 10u: { return vec2<u32>(2u, 6u); }
+        case 11u: { return vec2<u32>(3u, 7u); }
+        default:  { return vec2<u32>(0u, 0u); }
     }
 }
 
@@ -171,6 +173,79 @@ fn interpolate(p1: vec3<f32>, v1: f32, p2: vec3<f32>, v2: f32) -> vec3<f32> {
     let t = (ISOLEVEL - v1) / (v2 - v1);
     return mix(p1, p2, clamp(t, 0.0, 1.0));
 }
+
+// ============= MAIN COMPUTE SHADER =============
+
+@compute @workgroup_size(4, 4, 4)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    if any(global_id >= vec3<u32>(FIELD_SIZE - 1u)) {
+        return;
+    }
+
+    // Calculate world position including chunk offset
+    let size_f = f32(FIELD_SIZE - 1u);
+    let chunk_offset = vec3<f32>(
+        f32(params.chunk_x),
+        f32(params.chunk_y),
+        f32(params.chunk_z)
+    ) * size_f;
+
+    let local_pos = vec3<f32>(global_id);
+    let world_pos = (chunk_offset + local_pos) * params.frequency;
+
+    // Corner sampling (using an array for cleaner indexing)
+    var corners: array<f32, 8>;
+    let offsets = array<vec3<f32>, 8>(
+        vec3<f32>(0,0,0), vec3<f32>(1,0,0), vec3<f32>(1,1,0), vec3<f32>(0,1,0),
+        vec3<f32>(0,0,1), vec3<f32>(1,0,1), vec3<f32>(1,1,1), vec3<f32>(0,1,1)
+    );
+
+    var cube_index = 0u;
+    for (var i = 0u; i < 8u; i++) {
+        // Sample noise at corner
+        let p = world_pos + offsets[i] * params.frequency;
+        corners[i] = fbm_3d(p, params.octaves);
+
+        if (corners[i] < ISOLEVEL) {
+            cube_index |= (1u << i);
+        }
+    }
+
+    if (cube_index == 0u || cube_index == 255u) { return; }
+
+    // TRIANGLE GENERATION
+    let tri_base = cube_index * 16u;
+    for (var i = 0u; i < 16u; i += 3u) {
+        let e0 = TRI_TABLE[tri_base + i];
+        if (e0 == -1) { break; }
+
+        let e1 = TRI_TABLE[tri_base + i + 1u];
+        let e2 = TRI_TABLE[tri_base + i + 2u];
+
+        // Ensure we have enough space for 3 new vertices and 3 indices
+        let v_start = atomicAdd(&mesh_output.vertex_count, 3u);
+        let i_start = atomicAdd(&mesh_output.index_count, 3u);
+
+        if (v_start + 3u < MAX_VERTS && i_start + 3u < MAX_VERTS) {
+            let edges = array<i32, 3>(e0, e1, e2);
+            for (var j = 0u; j < 3u; j++) {
+                let edge_idx = u32(edges[j]);
+                let endpoints = edge_endpoints(edge_idx);
+
+                let p0 = local_pos + offsets[endpoints.x];
+                let p1 = local_pos + offsets[endpoints.y];
+                let v0 = corners[endpoints.x];
+                let v1 = corners[endpoints.y];
+
+                let vert_pos = interpolate(p0, v0, p1, v1);
+
+                mesh_output.vertices[v_start + j] = MarchVertex(vert_pos);
+                mesh_output.indices[i_start + j] = v_start + j;
+            }
+        }
+    }
+}
+
 
 // ============= MARCHING CUBES TABLES =============
 
@@ -473,95 +548,3 @@ const TRI_TABLE: array<i32, 4096> = array<i32, 4096>(
     0,3,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 );
-
-// ============= MAIN COMPUTE SHADER =============
-
-@compute @workgroup_size(4, 4, 4)
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    if global_id.x >= FIELD_SIZE - 1u ||
-       global_id.y >= FIELD_SIZE - 1u ||
-       global_id.z >= FIELD_SIZE - 1u {
-        return;
-    }
-
-    let x = global_id.x;
-    let y = global_id.y;
-    let z = global_id.z;
-
-    // Generate density at 8 cube corners
-    let size = f32(FIELD_SIZE - 1);
-    let world_pos_base = vec3<f32>(
-        f32(params.chunk_x) * size,
-        f32(params.chunk_y) * size,
-        f32(params.chunk_z) * size
-    ) * params.scale;
-
-    let c0 = final_noise((world_pos_base + vec3<f32>(f32(x), f32(y), f32(z))) * params.frequency);
-    let c1 = final_noise((world_pos_base + vec3<f32>(f32(x) + 1.0, f32(y), f32(z))) * params.frequency);
-    let c2 = final_noise((world_pos_base + vec3<f32>(f32(x) + 1.0, f32(y) + 1.0, f32(z))) * params.frequency);
-    let c3 = final_noise((world_pos_base + vec3<f32>(f32(x), f32(y) + 1.0, f32(z))) * params.frequency);
-    let c4 = final_noise((world_pos_base + vec3<f32>(f32(x), f32(y), f32(z) + 1.0)) * params.frequency);
-    let c5 = final_noise((world_pos_base + vec3<f32>(f32(x) + 1.0, f32(y), f32(z) + 1.0)) * params.frequency);
-    let c6 = final_noise((world_pos_base + vec3<f32>(f32(x) + 1.0, f32(y) + 1.0, f32(z) + 1.0)) * params.frequency);
-    let c7 = final_noise((world_pos_base + vec3<f32>(f32(x), f32(y) + 1.0, f32(z) + 1.0)) * params.frequency);
-
-    let corners = array<f32, 8>(c0, c1, c2, c3, c4, c5, c6, c7);
-    let corners_pos = array<vec3<f32>, 8>(
-        vec3<f32>(f32(x), f32(y), f32(z)),
-        vec3<f32>(f32(x) + 1.0, f32(y), f32(z)),
-        vec3<f32>(f32(x) + 1.0, f32(y) + 1.0, f32(z)),
-        vec3<f32>(f32(x), f32(y) + 1.0, f32(z)),
-        vec3<f32>(f32(x), f32(y), f32(z) + 1.0),
-        vec3<f32>(f32(x) + 1.0, f32(y), f32(z) + 1.0),
-        vec3<f32>(f32(x) + 1.0, f32(y) + 1.0, f32(z) + 1.0),
-        vec3<f32>(f32(x), f32(y) + 1.0, f32(z) + 1.0)
-    );
-
-    // Compute cube index
-    var cube_index = 0u;
-    for (var i = 0u; i < 8u; i = i + 1u) {
-        if corners[i] < ISOLEVEL {
-            cube_index |= 1u << i;
-        }
-    }
-
-    if cube_index == 0u || cube_index == 255u {
-        return;
-    }
-
-    let edge_flag = u32(EDGE_TABLE[cube_index]);
-    var edge_list = array<vec3<f32>, 12>(
-        vec3<f32>(0.0), vec3<f32>(0.0), vec3<f32>(0.0), vec3<f32>(0.0),
-        vec3<f32>(0.0), vec3<f32>(0.0), vec3<f32>(0.0), vec3<f32>(0.0),
-        vec3<f32>(0.0), vec3<f32>(0.0), vec3<f32>(0.0), vec3<f32>(0.0)
-    );
-
-    for (var i = 0u; i < 12u; i = i + 1u) {
-        if (edge_flag & (1u << i)) != 0u {
-            let edge = CORNER_INDICES[i];
-            let p1 = corners_pos[edge.x];
-            let p2 = corners_pos[edge.y];
-            let v1 = corners[edge.x];
-            let v2 = corners[edge.y];
-            edge_list[i] = interpolate(p1, v1, p2, v2);
-        }
-    }
-
-    let tri_base = cube_index * 16u;
-    for (var i = 0u; i < 16u; i = i + 3u) {
-        let idx0 = i32(TRI_TABLE[tri_base + i]);
-
-        if idx0 == -1 {
-            break;
-        }
-
-        let idx1 = i32(TRI_TABLE[tri_base + i + 1u]);
-        let idx2 = i32(TRI_TABLE[tri_base + i + 2u]);
-
-        let v0 = add_vertex(edge_list[idx0]);
-        let v1 = add_vertex(edge_list[idx1]);
-        let v2 = add_vertex(edge_list[idx2]);
-
-        add_triangle(v0, v1, v2);
-    }
-}

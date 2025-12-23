@@ -13,7 +13,6 @@ use bevy::{
     },
 };
 use bytemuck::{Pod, Zeroable};
-use std::num::NonZeroU64;
 
 #[derive(Resource)]
 pub struct TerrainNoiseParams {
@@ -64,6 +63,7 @@ impl Default for NoiseParams {
 #[derive(Clone, Copy, Pod, Zeroable, ShaderType)]
 pub struct MarchVertex {
     pub position: Vec3,
+    _pad: f32,
 }
 
 // ============= EVENTS =============
@@ -121,6 +121,7 @@ pub struct MeshOutput {
     pub vertex_count: u32,
     pub indices: [u32; MAX_VERTS],
     pub index_count: u32,
+    pub _pad: [u32; 3], // 12 bytes
 }
 
 // ============= SYSTEMS =============
@@ -189,8 +190,8 @@ pub fn on_mesh_readback_complete(
     if let Ok((entity, mesh_comp)) = query.get(trigger.entity) {
         let mesh_data: &MeshOutput = bytemuck::from_bytes(&trigger.data);
 
-        let vert_count = mesh_data.vertex_count as usize;
-        let idx_count = mesh_data.index_count as usize;
+        let vert_count = (mesh_data.vertex_count as usize).min(MAX_VERTS - 1);
+        let idx_count = (mesh_data.index_count as usize).min(MAX_VERTS - 1);
 
         // Only allocate for actual vertices/indices
         let mut vertices = Vec::with_capacity(vert_count);
@@ -310,14 +311,8 @@ fn init_pipeline(
         &BindGroupLayoutEntries::sequential(
             ShaderStages::COMPUTE,
             (
-                uniform_buffer_sized(
-                    false,
-                    NonZeroU64::new(std::mem::size_of::<NoiseParams>() as u64),
-                ),
-                storage_buffer::<MeshOutput>(
-                    false,
-                    //NonZeroU64::new(std::mem::size_of::<MeshOutput>() as u64),
-                ),
+                uniform_buffer::<NoiseParams>(false),
+                storage_buffer::<MeshOutput>(false),
             ),
         ),
     );
