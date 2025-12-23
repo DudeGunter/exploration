@@ -23,9 +23,15 @@ pub fn plugin(app: &mut App) {
     embedded_asset!(app, "mesh_generation.wgsl");
     embedded_asset!(app, "density_fields.wgsl");
 
+    app.add_plugins(ExtractResourcePlugin::<MainWorldQueue>::default());
+
     let render_app = app.sub_app_mut(RenderApp);
     render_app.add_systems(RenderStartup, init_pipelines);
 }
+
+//
+// INIT pipelines
+//
 
 #[derive(Resource)]
 pub struct ComputePipelines {
@@ -90,6 +96,10 @@ pub fn init_pipelines(
     });
 }
 
+//
+// Shader types
+//
+
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, ShaderType)]
 pub struct NoiseParams {
@@ -117,4 +127,71 @@ pub struct MeshOutput {
 pub struct MarchVertex {
     pub position: Vec3,
     _pad: f32,
+}
+
+//
+// Data Management
+//
+
+#[derive(Resource, ExtractResource, Clone, Default)]
+pub struct MainWorldQueue {
+    pub queue: Vec<Request>,
+}
+
+#[derive(Clone)]
+pub enum Request {
+    Density(NoiseParams),
+    Mesh(Density),
+    Full(NoiseParams),
+}
+
+pub type Density = Vec<f32>;
+
+impl MainWorldQueue {
+    pub fn new() -> Self {
+        Self { queue: Vec::new() }
+    }
+
+    pub fn queue(&mut self, request: Request) {
+        self.queue.push(request);
+    }
+}
+
+impl Queue for MainWorldQueue {
+    fn clear(&mut self) {
+        self.queue.clear();
+    }
+}
+
+pub trait Queue: Resource {
+    fn clear(&mut self);
+}
+
+pub fn clear_queue<T: Queue>(mut queue: ResMut<T>) {
+    queue.clear();
+}
+
+//
+// Render Graph Node
+//
+
+pub struct ComputeNode;
+
+pub struct ComputeLabel;
+
+impl render_graph::Node for ComputeNode {
+    fn run(
+        &self,
+        _graph: &mut render_graph::RenderGraphContext,
+        render_context: &mut RenderContext,
+        world: &World,
+    ) -> Result<(), render_graph::NodeRunError> {
+        let queue = world.resource::<MainWorldQueue>();
+        let device = world.resource::<RenderDevice>();
+        let cache = world.resource::<PipelineCache>();
+        let pipelines = world.resource::<ComputePipelines>();
+        let buffers = world.resource::<RenderAssets<GpuShaderStorageBuffer>>();
+
+        Ok(())
+    }
 }
