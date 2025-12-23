@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use console::*;
 
 pub mod chunks;
+pub mod marching_computed;
 pub mod marching_cubes;
 //pub mod mesh;
 pub mod render_distance;
