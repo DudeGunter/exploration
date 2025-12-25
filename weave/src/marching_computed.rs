@@ -201,6 +201,7 @@ impl render_graph::Node for ComputeNode {
         for request in main_queue.iter() {
             match request {
                 // User set density field mesh
+                // This should (hopefully) be basically instant
                 Request::Mesh((noise_params, data)) => {
                     // It seems this likely isn't needed
                     let mut pass = render_context.command_encoder().begin_compute_pass(
