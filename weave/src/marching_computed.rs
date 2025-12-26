@@ -243,7 +243,7 @@ impl render_graph::Node for ComputeNode {
                         label: Some("Generated Density values"),
                         size: (FIELD_SIZE * FIELD_SIZE * FIELD_SIZE * 4) as u64,
                         usage: BufferUsages::STORAGE,
-                        mapped_at_creation: true,
+                        mapped_at_creation: false,
                     });
                     todo!("This goes no where and the data is never used!");
                     // This should be attached to a buffer/handle which can be carried -
@@ -266,6 +266,10 @@ impl render_graph::Node for ComputeNode {
                         TOTAL_WORK_GROUP_SIZE,
                         TOTAL_WORK_GROUP_SIZE,
                     );
+
+                    drop(pass); // claude said ts is needed. I trust you claude
+
+                    todo!("create the second shader pass with the same previous buffer");
                 }
             }
         }
