@@ -6,6 +6,7 @@ use bevy::{
         RenderApp, RenderStartup,
         extract_resource::{ExtractResource, ExtractResourcePlugin},
         gpu_readback::{Readback, ReadbackComplete},
+        mesh::allocator::MeshAllocator,
         render_asset::RenderAssets,
         render_graph::{self, RenderGraph, RenderLabel},
         render_resource::{binding_types::*, *},
@@ -20,14 +21,26 @@ pub const WORK_GROUP_SIZE: u32 = 4;
 pub const TOTAL_WORK_GROUP_SIZE: u32 = (FIELD_SIZE + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE;
 pub const MAX_VERTS: usize = 65535;
 
-pub fn plugin(app: &mut App) {
-    embedded_asset!(app, "mesh_generation.wgsl");
-    embedded_asset!(app, "density_fields.wgsl");
+pub struct MarchingCubesPlugin;
 
-    app.add_plugins(ExtractResourcePlugin::<MainWorldQueue>::default());
+impl Plugin for MarchingCubesPlugin {
+    fn build(&self, app: &mut App) {
+        embedded_asset!(app, "mesh_generation.wgsl");
+        embedded_asset!(app, "density_fields.wgsl");
 
-    let render_app = app.sub_app_mut(RenderApp);
-    render_app.add_systems(RenderStartup, init_pipelines);
+        app.add_plugins(ExtractResourcePlugin::<MainWorldQueue>::default());
+
+        let render_app = app.sub_app_mut(RenderApp);
+        render_app.add_systems(RenderStartup, init_pipelines);
+    }
+    fn finish(&self, app: &mut App) {
+        let mut render_app = app.sub_app_mut(RenderApp);
+        render_app
+            .world_mut()
+            .get_resource_mut::<MeshAllocator>()
+            .unwrap()
+            .extra_buffer_usages = BufferUsages::STORAGE;
+    }
 }
 
 //
@@ -226,7 +239,7 @@ impl render_graph::Node for ComputeNode {
                 }
                 // Generated density field + mesh generation
                 Request::Full(noise_params) => {
-                    let mut pass = render_context.command_encoder().begin_compute_pass(
+                    let mut first = render_context.command_encoder().begin_compute_pass(
                         &ComputePassDescriptor {
                             label: Some("Generate Density Values"),
                             ..default()
@@ -259,17 +272,24 @@ impl render_graph::Node for ComputeNode {
                         )),
                     );
 
-                    pass.set_bind_group(0, &bind_group, &[]);
-                    pass.set_pipeline(density_compute.unwrap());
-                    pass.dispatch_workgroups(
+                    first.set_bind_group(0, &bind_group, &[]);
+                    first.set_pipeline(density_compute.unwrap());
+                    first.dispatch_workgroups(
                         TOTAL_WORK_GROUP_SIZE,
                         TOTAL_WORK_GROUP_SIZE,
                         TOTAL_WORK_GROUP_SIZE,
                     );
 
-                    drop(pass); // claude said ts is needed. I trust you claude
+                    drop(first); // claude said ts is needed. I trust you claude
 
                     todo!("create the second shader pass with the same previous buffer");
+
+                    let second = render_context.command_encoder().begin_compute_pass(
+                        &ComputePassDescriptor {
+                            label: Some("Generate Mesh data for readback"),
+                            ..default()
+                        },
+                    );
                 }
             }
         }
