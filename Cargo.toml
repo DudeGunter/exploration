@@ -6,6 +6,7 @@ members = [
     "explore",
     "networking",
     "portal",
+    "sdf",
     "weave",
 ]
 resolver = "3"
@@ -15,6 +16,7 @@ crossbeam-channel = "0.5"
 leafwing-input-manager = "0.19"
 ron = "0.12"
 serde = "1.0"
+sdf.path = "sdf"
 
 [workspace.dependencies.avian3d]
 version = "0.4"

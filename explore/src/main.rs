@@ -23,8 +23,8 @@ fn main() -> AppExit {
         WorldInspectorPlugin::new(),
         //VoxelTerrainPlugin,
         //NetworkingPlugin,
-        WeavePlugin,
-        console::ConsolePlugin,
+        //WeavePlugin,
+        //console::ConsolePlugin,
         //PortalPlugin,
     ));
     app.add_systems(Startup, setup);

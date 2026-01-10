@@ -6877,6 +6877,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdf"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "seahash"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
